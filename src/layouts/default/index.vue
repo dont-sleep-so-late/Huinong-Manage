@@ -15,7 +15,6 @@
         v-model:selectedKeys="selectedKeys"
         v-model:openKeys="openKeys"
         mode="inline"
-        theme="dark"
       >
         <template v-for="menu in menus" :key="menu.path">
           <!-- 有子菜单 -->
@@ -143,18 +142,19 @@ import {
   FullscreenOutlined,
   FullscreenExitOutlined
 } from '@ant-design/icons-vue'
-import { useAppStore, useUserStore } from '@/store'
+import { useAppStore, useUserStore, usePermissionStore } from '@/store'
 import { message } from 'ant-design-vue'
 
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
 const userStore = useUserStore()
+const permissionStore = usePermissionStore()
 
 // 菜单相关
 const selectedKeys = ref<string[]>([])
 const openKeys = ref<string[]>([])
-const menus = computed(() => router.options.routes)
+const menus = computed(() => permissionStore.filterRoutes)
 
 // 标签页相关
 const activeTab = ref(route.path)
@@ -167,7 +167,7 @@ const visitedViews = ref([
 
 // 面包屑相关
 const breadcrumbs = computed(() => {
-  const matched = route.matched.filter(item => item.meta && item.meta.title)
+  const matched = route.matched.filter(item => item.meta?.title && !item.meta?.hidden)
   return matched
 })
 

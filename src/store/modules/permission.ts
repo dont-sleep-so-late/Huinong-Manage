@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { routes } from '@/router'
+import { constantRoutes, asyncRoutes } from '@/router'
+import router from '@/router'
 
 export const usePermissionStore = defineStore('permission', () => {
   // 动态路由
@@ -34,19 +35,49 @@ export const usePermissionStore = defineStore('permission', () => {
       })
     }
 
-    return filterRoutesByPermission([...routes])
+    return filterRoutesByPermission(asyncRoutes)
   })
 
+  // 生成动态路由
+  const generateRoutes = async () => {
+    try {
+      // 过滤后的路由
+      const accessRoutes = filterRoutes.value
+      
+      // 清空旧的动态路由
+      dynamicRoutes.value.forEach(route => {
+        router.removeRoute(route.name as string)
+      })
+      
+      // 添加新的动态路由
+      accessRoutes.forEach(route => {
+        router.addRoute(route)
+      })
+      
+      // 保存动态路由
+      dynamicRoutes.value = accessRoutes
+      
+      return accessRoutes
+    } catch (error) {
+      return []
+    }
+  }
+
   // 设置权限
-  const setPermissions = (menus: string[], buttons: string[]) => {
+  const setPermissions = async (menus: string[], buttons: string[]) => {
     menuPermissions.value = menus
     buttonPermissions.value = buttons
+    return await generateRoutes()
   }
 
   // 重置权限
   const resetPermissions = () => {
     menuPermissions.value = []
     buttonPermissions.value = []
+    // 清空动态路由
+    dynamicRoutes.value.forEach(route => {
+      router.removeRoute(route.name as string)
+    })
     dynamicRoutes.value = []
   }
 
@@ -60,6 +91,7 @@ export const usePermissionStore = defineStore('permission', () => {
     menuPermissions,
     buttonPermissions,
     filterRoutes,
+    generateRoutes,
     setPermissions,
     resetPermissions,
     hasButtonPermission

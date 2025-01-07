@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
-const routes: RouteRecordRaw[] = [
+// 公共路由
+export const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
@@ -10,7 +11,11 @@ const routes: RouteRecordRaw[] = [
       title: '登录',
       hidden: true
     }
-  },
+  }
+]
+
+// 动态路由
+export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Layout',
@@ -129,7 +134,7 @@ const routes: RouteRecordRaw[] = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: constantRoutes
 })
 
 export default router 
