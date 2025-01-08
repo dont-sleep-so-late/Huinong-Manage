@@ -15,6 +15,7 @@
         v-model:selectedKeys="selectedKeys"
         v-model:openKeys="openKeys"
         mode="inline"
+        theme="dark"
       >
         <template v-for="menu in menus" :key="menu.path">
           <!-- 有子菜单 -->

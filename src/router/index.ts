@@ -23,7 +23,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
     redirect: '/dashboard',
     children: [
       {
-        path: 'dashboard',
+        path: '/dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: {

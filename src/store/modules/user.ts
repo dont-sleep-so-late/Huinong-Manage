@@ -7,13 +7,15 @@ export const useUserStore = defineStore('user', () => {
   const userInfo = ref<UserInfo | null>(null)
 
   // 登录
-  const login = async (username: string, password: string) => {
+  const login = async (loginParams: { username: string; password: string}) => {
     try {
-      // TODO: 调用登录API
-      token.value = 'mock-token' // 模拟token
+      // TODO: 调用登录接口
+      const { username, password } = loginParams
+      // 模拟登录成功
+      token.value = 'mock_token'
       return true
     } catch (error) {
-      return false
+      return Promise.reject(error)
     }
   }
 

@@ -14,22 +14,27 @@ router.beforeEach(async (to, from, next) => {
       // 已登录且要跳转的页面是登录页
       next({ path: '/' })
     } else {
-      if (!userStore.userInfo) {
-        try {
+      try {
+        // 判断是否已获取用户信息
+        if (!userStore.userInfo) {
           // 获取用户信息
           await userStore.getUserInfo()
+        }
+        
+        // 判断是否已生成动态路由
+        if (permissionStore.dynamicRoutes.length === 0) {
           // 生成动态路由
           await permissionStore.generateRoutes()
-          // 确保动态路由已添加
+          // 添加动态路由后需要重新进入当前路由
           next({ ...to, replace: true })
-        } catch (error) {
-          // 获取用户信息失败，可能token过期
-          await userStore.logout()
-          message.error('登录状态已过期，请重新登录')
-          next(`/login?redirect=${to.path}`)
+        } else {
+          next()
         }
-      } else {
-        next()
+      } catch (error) {
+        // 获取用户信息失败，可能token过期
+        await userStore.logout()
+        message.error('登录状态已过期，请重新登录')
+        next(`/login?redirect=${to.path}`)
       }
     }
   } else {

@@ -41,13 +41,13 @@ export const usePermissionStore = defineStore('permission', () => {
   // 生成动态路由
   const generateRoutes = async () => {
     try {
-      // 过滤后的路由
-      const accessRoutes = filterRoutes.value
-      
       // 清空旧的动态路由
       dynamicRoutes.value.forEach(route => {
         router.removeRoute(route.name as string)
       })
+      
+      // 获取可访问的路由
+      const accessRoutes = filterRoutes.value
       
       // 添加新的动态路由
       accessRoutes.forEach(route => {
@@ -59,6 +59,7 @@ export const usePermissionStore = defineStore('permission', () => {
       
       return accessRoutes
     } catch (error) {
+      console.error('生成动态路由失败:', error)
       return []
     }
   }
