@@ -237,7 +237,7 @@ const handleRegister = async () => {
         transform: translateX(100%);
         opacity: 0;
         visibility: hidden;
-        transition: transform 0.7s ease-in-out, opacity 0.5s ease-in-out, visibility 0.5s;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease-in-out, visibility 0.5s;
       }
       
       .sign-up-container {
@@ -245,29 +245,29 @@ const handleRegister = async () => {
         opacity: 1;
         visibility: visible;
         z-index: 5;
-        transition: transform 0.7s ease-in-out, opacity 0.5s ease-in-out 0.2s, visibility 0s 0.2s;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease-in-out 0.2s, visibility 0s 0.2s;
       }
       
       .overlay-container {
         transform: translateX(-100%);
-        transition: transform 0.7s ease-in-out;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       }
       
       .overlay {
         transform: translateX(50%);
-        transition: transform 0.7s ease-in-out;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       }
       
       .overlay-left {
         transform: translateX(0);
         opacity: 1;
-        transition: transform 0.7s ease-in-out, opacity 0.5s ease-in-out 0.2s;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease-in-out 0.2s;
       }
       
       .overlay-right {
         transform: translateX(20%);
         opacity: 0;
-        transition: transform 0.7s ease-in-out, opacity 0.5s ease-in-out;
+        transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease-in-out;
       }
     }
   }
@@ -278,7 +278,7 @@ const handleRegister = async () => {
     left: 0;
     width: 50%;
     height: 100%;
-    transition: all 0.7s ease-in-out;
+    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     visibility: visible;
 
     .form-content {
@@ -330,7 +330,7 @@ const handleRegister = async () => {
         }
       }
 
-      span {
+      &>span {
         margin-bottom: 32px;
         color: #666;
         font-size: 16px;
@@ -451,7 +451,7 @@ const handleRegister = async () => {
     width: 50%;
     height: 100%;
     overflow: hidden;
-    transition: transform 0.7s ease-in-out;
+    transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     z-index: 100;
   }
 
@@ -463,7 +463,7 @@ const handleRegister = async () => {
     background: linear-gradient(to right, #001529, #003a70);
     color: #fff;
     transform: translateX(0);
-    transition: transform 0.7s ease-in-out;
+    transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     .overlay-panel {
       position: absolute;

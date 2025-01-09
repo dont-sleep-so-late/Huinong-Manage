@@ -8,7 +8,6 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   const permissionStore = usePermissionStore()
   const token = userStore.token
-
   if (token) {
     if (to.path === '/login') {
       // 已登录且要跳转的页面是登录页

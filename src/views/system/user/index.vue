@@ -72,46 +72,45 @@
         :pagination="pagination"
         @change="handleTableChange"
       >
-        <!-- 头像 -->
-        <template #avatar="{ text }">
-          <a-avatar :src="text" />
-        </template>
-
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '正常' : '禁用' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a @click="handlePassword(record)">重置密码</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要禁用该用户吗？' : '确定要启用该用户吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该用户吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'avatar'">
+            <a-avatar :src="text" />
+          </template>
+          
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="text === 1 ? 'success' : 'error'">
+              {{ text === 1 ? '正常' : '禁用' }}
+            </a-tag>
+          </template>
+          
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <a @click="handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a @click="handlePassword(record)">重置密码</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要禁用该用户吗？' : '确定要启用该用户吗？'"
+                @confirm="handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该用户吗？"
+                @confirm="handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -184,7 +183,7 @@
 
     <!-- 重置密码弹窗 -->
     <a-modal
-      v-model:visible="passwordVisible"
+      v-model:open="passwordVisible"
       title="重置密码"
       @ok="handlePasswordOk"
       @cancel="handlePasswordCancel"

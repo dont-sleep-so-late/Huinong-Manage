@@ -47,7 +47,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'User',
         component: () => import('@/views/system/user/index.vue'),
         meta: {
-          title: '用户管理'
+          title: '用户管理',
+          icon: 'user'
         }
       },
       {
@@ -55,7 +56,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'Role',
         component: () => import('@/views/system/role/index.vue'),
         meta: {
-          title: '角色管理'
+          title: '角色管理',
+          icon: 'role'
         }
       },
       {
@@ -63,7 +65,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'Menu',
         component: () => import('@/views/system/menu/index.vue'),
         meta: {
-          title: '菜单管理'
+          title: '菜单管理',
+          icon: 'menu'
         }
       }
     ]
@@ -82,7 +85,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'ProductList',
         component: () => import('@/views/product/list/index.vue'),
         meta: {
-          title: '商品列表'
+          title: '商品列表',
+          icon: 'shopping-cart'
         }
       },
       {
@@ -90,7 +94,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'Category',
         component: () => import('@/views/product/category/index.vue'),
         meta: {
-          title: '商品分类'
+          title: '商品分类',
+          icon: 'category'
         }
       },
       {
@@ -98,7 +103,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'Spec',
         component: () => import('@/views/product/spec/index.vue'),
         meta: {
-          title: '规格管理'
+          title: '规格管理',
+          icon: 'spec'
         }
       }
     ]
@@ -117,7 +123,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'OrderList',
         component: () => import('@/views/order/list/index.vue'),
         meta: {
-          title: '订单列表'
+          title: '订单列表',
+          icon: 'list'
         }
       },
       {
@@ -125,7 +132,8 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: 'AfterSale',
         component: () => import('@/views/order/after-sale/index.vue'),
         meta: {
-          title: '售后管理'
+          title: '售后管理',
+          icon: 'after-sale'
         }
       }
     ]

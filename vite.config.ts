@@ -11,7 +11,9 @@ export default defineConfig({
     Components({
       resolvers: [
         AntDesignVueResolver({
-          importStyle: false
+          importStyle: false,
+          resolveIcons: true,
+          exclude: ['AFormList'] // 排除AFormList，因为它需要单独导入
         })
       ]
     })

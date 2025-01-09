@@ -21,17 +21,18 @@
           <!-- 有子菜单 -->
           <template v-if="menu.children && menu.children.length > 0">
             <a-sub-menu :key="menu.path">
-              <template #title>
-                <span>
-                  <component :is="menu.meta?.icon" />
-                  <span>{{ menu.meta?.title }}</span>
-                </span>
+              <template #icon>
+                <component :is="menu.meta?.icon" />
               </template>
+              <template #title>{{ menu.meta?.title }}</template>
               <a-menu-item
                 v-for="child in menu.children"
                 :key="menu.path + '/' + child.path"
                 @click="handleMenuClick(menu.path + '/' + child.path)"
               >
+                <template #icon v-if="child.meta?.icon">
+                  <component :is="iconMap[child.meta.icon]" />
+                </template>
                 {{ child.meta?.title }}
               </a-menu-item>
             </a-sub-menu>
@@ -63,8 +64,11 @@
         
         <!-- 面包屑 -->
         <a-breadcrumb v-if="appStore.layout.showBreadcrumb" class="breadcrumb">
-          <a-breadcrumb-item v-for="item in breadcrumbs" :key="item.path">
-            {{ item.meta?.title }}
+          <a-breadcrumb-item 
+            v-for="(item, index) in breadcrumbs" 
+            :key="item.path"
+          >
+            <a class="breadcrumb-text" @click.prevent="handleBreadcrumbClick(breadcrumbs.slice(0, index + 1))">{{ item.meta?.title }}</a>
           </a-breadcrumb-item>
         </a-breadcrumb>
 
@@ -134,6 +138,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import type { RouteLocationMatched, RouteMeta as VueRouteMeta } from 'vue-router'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -141,7 +146,18 @@ import {
   SettingOutlined,
   LogoutOutlined,
   FullscreenOutlined,
-  FullscreenExitOutlined
+  FullscreenExitOutlined,
+  DashboardOutlined,
+  ShoppingOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+  KeyOutlined,
+  MenuOutlined,
+  ShoppingCartOutlined,
+  AppstoreOutlined,
+  ToolOutlined,
+  OrderedListOutlined,
+  CustomerServiceOutlined
 } from '@ant-design/icons-vue'
 import { useAppStore, useUserStore, usePermissionStore } from '@/store'
 import { message } from 'ant-design-vue'
@@ -152,14 +168,63 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const permissionStore = usePermissionStore()
 
+interface RouteMeta extends VueRouteMeta {
+  title: string
+  icon?: string
+  hidden?: boolean
+}
+
+interface MenuItem {
+  path: string
+  name?: string
+  meta?: {
+    title?: string
+    icon?: string
+    hidden?: boolean
+  }
+  children?: MenuItem[]
+}
+
+// 图标映射
+const iconMap: Record<string, any> = {
+  dashboard: DashboardOutlined,
+  setting: SettingOutlined,
+  shopping: ShoppingOutlined,
+  'file-text': FileTextOutlined,
+  user: TeamOutlined,
+  role: KeyOutlined,
+  menu: MenuOutlined,
+  'shopping-cart': ShoppingCartOutlined,
+  category: AppstoreOutlined,
+  spec: ToolOutlined,
+  list: OrderedListOutlined,
+  'after-sale': CustomerServiceOutlined
+}
+
 // 菜单相关
 const selectedKeys = ref<string[]>([])
 const openKeys = ref<string[]>([])
-const menus = computed(() => permissionStore.filterRoutes)
+const menus = computed(() => {
+  const routes = permissionStore.filterRoutes as MenuItem[]
+  return routes.map(route => ({
+    ...route,
+    meta: {
+      ...route.meta,
+      icon: route.meta?.icon ? iconMap[route.meta.icon] : null
+    },
+    children: route.children?.map(child => ({
+      ...child,
+      meta: {
+        ...child.meta,
+        icon: child.meta?.icon ? iconMap[child.meta.icon] : null
+      }
+    }))
+  }))
+})
 
 // 标签页相关
 const activeTab = ref(route.path)
-const visitedViews = ref([
+const visitedViews = ref<Array<{ path: string; meta: RouteMeta }>>([
   {
     path: '/dashboard',
     meta: { title: '首页' }
@@ -168,8 +233,9 @@ const visitedViews = ref([
 
 // 面包屑相关
 const breadcrumbs = computed(() => {
-  const matched = route.matched.filter(item => item.meta?.title && !item.meta?.hidden)
-  return matched
+  return route.matched.filter(item => {
+    return item.meta?.title && !item.meta?.hidden
+  })
 })
 
 // 全屏相关
@@ -198,7 +264,7 @@ watch(
       if (!exists) {
         visitedViews.value.push({
           path: routePath,
-          meta
+          meta: meta as RouteMeta
         })
       }
     }
@@ -234,6 +300,24 @@ const handleLogout = async () => {
     message.error('退出失败')
   }
 }
+
+// 面包屑点击
+const handleBreadcrumbClick = (items: RouteLocationMatched[]) => {
+  console.log(items)
+  if (items.length > 0) {
+    const lastItem = items[items.length - 1]
+    try {
+      if (lastItem.path) {
+        router.push(lastItem.path)
+      } else if (lastItem.name) {
+        router.push({ name: lastItem.name as string })
+      }
+    } catch (error) {
+      console.error('导航失败:', error)
+      message.error('页面跳转失败')
+    }
+  }
+}
 </script>
 
 <style lang="less" scoped>
@@ -248,18 +332,64 @@ const handleLogout = async () => {
       align-items: center;
       justify-content: center;
       background: #002140;
-
+      overflow: hidden;
+      white-space: nowrap;
+      
       img {
         width: 32px;
         height: 32px;
+        margin-right: 8px;
+        transition: margin-right 0.3s;
       }
-
+      
       h1 {
-        margin: 0 0 0 12px;
-        color: white;
-        font-weight: 600;
+        color: #fff;
         font-size: 18px;
+        margin: 0;
+        flex: 1;
         white-space: nowrap;
+        overflow: hidden;
+        opacity: 1;
+        transition: all 0.3s;
+      }
+    }
+
+    &.ant-layout-sider-collapsed {
+      .logo {
+        padding: 16px 8px;
+        
+        img {
+          margin-right: 0;
+        }
+        
+        h1 {
+          width: 0;
+          opacity: 0;
+          display: inline-block;
+        }
+      }
+      
+      :deep(.ant-menu) {
+        .ant-menu-item, 
+        .ant-menu-submenu-title {
+          padding: 0 24px !important;
+          
+          .ant-menu-item-icon {
+            min-width: 14px;
+            font-size: 16px;
+          }
+          
+          .ant-menu-title-content {
+            opacity: 0;
+            display: none;
+          }
+        }
+        
+        &.ant-menu-inline-collapsed {
+          .ant-menu-item-icon {
+            margin-right: 0;
+          }
+        }
       }
     }
   }
@@ -284,6 +414,30 @@ const handleLogout = async () => {
 
     .breadcrumb {
       margin-left: 16px;
+      user-select: none;
+      
+      :deep(.ant-breadcrumb-item) {
+        .breadcrumb-text {
+          color: rgba(0, 0, 0, 0.65);
+          transition: color 0.3s;
+          cursor: pointer;
+          
+          &:hover {
+            color: #1890ff;
+          }
+        }
+
+        &:last-child {
+          .breadcrumb-text {
+            color: rgba(0, 0, 0, 0.85);
+            cursor: default;
+            
+            &:hover {
+              color: rgba(0, 0, 0, 0.85);
+            }
+          }
+        }
+      }
     }
 
     .header-right {
