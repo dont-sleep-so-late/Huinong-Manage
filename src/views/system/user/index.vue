@@ -260,8 +260,7 @@ const columns = [
   {
     title: '头像',
     dataIndex: 'avatar',
-    key: 'avatar',
-    slots: { customRender: 'avatar' }
+    key: 'avatar'
   },
   {
     title: '昵称',
@@ -281,8 +280,7 @@ const columns = [
   {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
+    key: 'status'
   },
   {
     title: '注册时间',
@@ -291,8 +289,7 @@ const columns = [
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
 

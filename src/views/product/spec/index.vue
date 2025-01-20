@@ -64,39 +64,43 @@
         :pagination="pagination"
         @change="handleTableChange"
       >
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '启用' : '禁用' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要禁用该规格吗？' : '确定要启用该规格吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该规格吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'values'">
+            {{ text.join('、') }}
+          </template>
+          
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="text === 1 ? 'success' : 'error'">
+              {{ text === 1 ? '启用' : '禁用' }}
+            </a-tag>
+          </template>
+          
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <a @click="handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要禁用该规格吗？' : '确定要启用该规格吗？'"
+                @confirm="handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该规格吗？"
+                @confirm="handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -217,8 +221,7 @@ const columns = [
   {
     title: '规格值',
     dataIndex: 'values',
-    key: 'values',
-    customRender: ({ text }: { text: string[] }) => text.join('、')
+    key: 'values'
   },
   {
     title: '排序',
@@ -228,8 +231,7 @@ const columns = [
   {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
+    key: 'status'
   },
   {
     title: '创建时间',
@@ -238,8 +240,7 @@ const columns = [
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
 

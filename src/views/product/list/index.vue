@@ -27,10 +27,28 @@
             v-model:value="searchForm.status"
             placeholder="请选择状态"
             style="width: 120px"
+            allow-clear
           >
             <a-select-option :value="1">上架</a-select-option>
             <a-select-option :value="0">下架</a-select-option>
           </a-select>
+        </a-form-item>
+        <a-form-item label="价格区间">
+          <a-space>
+            <a-input-number
+              v-model:value="searchForm.minPrice"
+              placeholder="最低价"
+              :min="0"
+              style="width: 120px"
+            />
+            <span>-</span>
+            <a-input-number
+              v-model:value="searchForm.maxPrice"
+              placeholder="最高价"
+              :min="0"
+              style="width: 120px"
+            />
+          </a-space>
         </a-form-item>
         <a-form-item>
           <a-space>
@@ -47,7 +65,7 @@
       </a-form>
     </a-card>
 
-    <!-- 操作按钮 -->
+    <!-- 表格 -->
     <a-card class="table-card" :bordered="false">
       <template #extra>
         <a-space>
@@ -62,7 +80,6 @@
         </a-space>
       </template>
 
-      <!-- 表格 -->
       <a-table
         :columns="columns"
         :data-source="tableData"
@@ -70,57 +87,49 @@
         :pagination="pagination"
         @change="handleTableChange"
       >
-        <!-- 商品图片 -->
-        <template #image="{ text }">
-          <a-image
-            :width="50"
-            :src="text"
-            :preview="{
-              src: text
-            }"
-          />
-        </template>
-
-        <!-- 价格 -->
-        <template #price="{ text }">
-          ¥{{ text.toFixed(2) }}
-        </template>
-
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '上架' : '下架' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a @click="handleSpec(record)">规格</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要下架该商品吗？' : '确定要上架该商品吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '下架' : '上架' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该商品吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'image'">
+            <img :src="text" alt="商品图片" class="product-image" />
+          </template>
+          
+          <template v-else-if="column.key === 'price'">
+            ¥{{ text.toFixed(2) }}
+          </template>
+          
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="text === 1 ? 'success' : 'error'">
+              {{ text === 1 ? '上架' : '下架' }}
+            </a-tag>
+          </template>
+          
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <a @click="handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a @click="handleSpecs(record)">规格</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要下架该商品吗？' : '确定要上架该商品吗？'"
+                @confirm="handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '下架' : '上架' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该商品吗？"
+                @confirm="handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       width="800px"
       @ok="handleModalOk"
@@ -133,12 +142,6 @@
         :label-col="{ span: 4 }"
         :wrapper-col="{ span: 18 }"
       >
-        <a-form-item label="商品名称" name="name">
-          <a-input
-            v-model:value="formData.name"
-            placeholder="请输入商品名称"
-          />
-        </a-form-item>
         <a-form-item label="商品分类" name="categoryId">
           <a-cascader
             v-model:value="formData.categoryId"
@@ -151,16 +154,20 @@
             }"
           />
         </a-form-item>
-        <a-form-item label="商品图片" name="image">
+        <a-form-item label="商品名称" name="name">
+          <a-input
+            v-model:value="formData.name"
+            placeholder="请输入商品名称"
+          />
+        </a-form-item>
+        <a-form-item label="商品图片" name="images">
           <a-upload
             v-model:file-list="fileList"
             list-type="picture-card"
-            :show-upload-list="false"
             :before-upload="beforeUpload"
             @change="handleChange"
           >
-            <img v-if="formData.image" :src="formData.image" alt="商品图片" style="width: 100%" />
-            <div v-else>
+            <div v-if="fileList.length < 5">
               <plus-outlined />
               <div style="margin-top: 8px">上传</div>
             </div>
@@ -171,7 +178,6 @@
             v-model:value="formData.price"
             :min="0"
             :precision="2"
-            :step="0.01"
             style="width: 100%"
             placeholder="请输入商品价格"
           />
@@ -180,7 +186,6 @@
           <a-input-number
             v-model:value="formData.stock"
             :min="0"
-            :precision="0"
             style="width: 100%"
             placeholder="请输入商品库存"
           />
@@ -190,6 +195,14 @@
             v-model:value="formData.description"
             :rows="4"
             placeholder="请输入商品描述"
+          />
+        </a-form-item>
+        <a-form-item label="排序" name="sort">
+          <a-input-number
+            v-model:value="formData.sort"
+            :min="0"
+            style="width: 100%"
+            placeholder="请输入排序号"
           />
         </a-form-item>
         <a-form-item label="状态" name="status">
@@ -203,51 +216,32 @@
 
     <!-- 规格弹窗 -->
     <a-modal
-      v-model:visible="specVisible"
+      v-model:open="specsVisible"
       title="商品规格"
       width="800px"
-      @ok="handleSpecOk"
-      @cancel="handleSpecCancel"
+      @ok="handleSpecsOk"
+      @cancel="handleSpecsCancel"
     >
-      <a-form layout="vertical">
+      <a-form
+        ref="specsFormRef"
+        :model="specsForm"
+        :label-col="{ span: 4 }"
+        :wrapper-col="{ span: 18 }"
+      >
         <a-form-item
-          v-for="(spec, index) in specList"
-          :key="index"
-          :label="'规格' + (index + 1)"
+          v-for="spec in productSpecs"
+          :key="spec.id"
+          :label="spec.name"
         >
-          <a-space>
-            <a-input
-              v-model:value="spec.name"
-              placeholder="规格名称"
-              style="width: 200px"
-            />
-            <a-input-number
-              v-model:value="spec.price"
-              :min="0"
-              :precision="2"
-              :step="0.01"
-              placeholder="价格"
-              style="width: 200px"
-            />
-            <a-input-number
-              v-model:value="spec.stock"
-              :min="0"
-              :precision="0"
-              placeholder="库存"
-              style="width: 200px"
-            />
-            <minus-circle-outlined
-              v-if="specList.length > 1"
-              class="dynamic-delete-button"
-              @click="removeSpec(spec)"
-            />
-          </a-space>
-        </a-form-item>
-        <a-form-item>
-          <a-button type="dashed" block @click="addSpec">
-            <plus-outlined />
-            添加规格
-          </a-button>
+          <a-checkbox-group v-model:value="specsForm[spec.id]">
+            <a-checkbox
+              v-for="value in spec.values"
+              :key="value"
+              :value="value"
+            >
+              {{ value }}
+            </a-checkbox>
+          </a-checkbox-group>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -260,21 +254,21 @@ import {
   SearchOutlined,
   RedoOutlined,
   PlusOutlined,
-  ExportOutlined,
-  MinusCircleOutlined
+  ExportOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import type { UploadChangeParam, UploadProps } from 'ant-design-vue'
+import type { UploadChangeParam } from 'ant-design-vue'
 
 interface ProductInfo {
   id: number
-  name: string
   categoryId: number[]
-  image: string
+  name: string
+  images: string[]
   price: number
   stock: number
   description: string
+  sort: number
   status: number
   createTime: string
 }
@@ -283,24 +277,24 @@ interface SearchForm {
   name?: string
   categoryId?: number[]
   status?: number
+  minPrice?: number
+  maxPrice?: number
   pageNum: number
   pageSize: number
 }
 
-interface SpecItem {
-  id?: number
+interface SpecInfo {
+  id: number
   name: string
-  price: number
-  stock: number
+  values: string[]
 }
 
 // 表格列定义
 const columns = [
   {
     title: '商品图片',
-    dataIndex: 'image',
-    key: 'image',
-    slots: { customRender: 'image' }
+    dataIndex: ['images', 0],
+    key: 'image'
   },
   {
     title: '商品名称',
@@ -310,8 +304,7 @@ const columns = [
   {
     title: '价格',
     dataIndex: 'price',
-    key: 'price',
-    slots: { customRender: 'price' }
+    key: 'price'
   },
   {
     title: '库存',
@@ -319,10 +312,14 @@ const columns = [
     key: 'stock'
   },
   {
+    title: '排序',
+    dataIndex: 'sort',
+    key: 'sort'
+  },
+  {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
+    key: 'status'
   },
   {
     title: '创建时间',
@@ -331,8 +328,7 @@ const columns = [
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
 
@@ -373,6 +369,8 @@ const searchForm = reactive<SearchForm>({
   name: '',
   categoryId: undefined,
   status: undefined,
+  minPrice: undefined,
+  maxPrice: undefined,
   pageNum: 1,
   pageSize: 10
 })
@@ -388,29 +386,30 @@ const pagination = reactive<TablePaginationConfig>({
   showQuickJumper: true
 })
 
-// 弹窗相关
+// 新增/编辑弹窗
 const modalVisible = ref(false)
 const modalTitle = ref('新增商品')
 const formRef = ref()
 const formData = reactive<Partial<ProductInfo>>({
-  name: '',
   categoryId: [],
-  image: '',
-  price: 0,
-  stock: 0,
+  name: '',
+  images: [],
+  price: undefined,
+  stock: undefined,
   description: '',
+  sort: 0,
   status: 1
 })
 
 // 表单验证规则
 const formRules = {
-  name: [
-    { required: true, message: '请输入商品名称' }
-  ],
   categoryId: [
     { required: true, message: '请选择商品分类' }
   ],
-  image: [
+  name: [
+    { required: true, message: '请输入商品名称' }
+  ],
+  images: [
     { required: true, message: '请上传商品图片' }
   ],
   price: [
@@ -418,6 +417,9 @@ const formRules = {
   ],
   stock: [
     { required: true, message: '请输入商品库存' }
+  ],
+  description: [
+    { required: true, message: '请输入商品描述' }
   ]
 }
 
@@ -442,35 +444,27 @@ const handleChange = (info: UploadChangeParam) => {
   }
   if (info.file.status === 'done') {
     // TODO: 处理上传成功后的逻辑
-    formData.image = info.file.response.url
+    formData.images = info.fileList.map(file => file.response.url)
     loading.value = false
   }
 }
 
-// 规格相关
-const specVisible = ref(false)
-const specList = ref<SpecItem[]>([
+// 规格弹窗
+const specsVisible = ref(false)
+const specsFormRef = ref()
+const specsForm = reactive<Record<number, string[]>>({})
+const productSpecs = ref<SpecInfo[]>([
   {
-    name: '',
-    price: 0,
-    stock: 0
+    id: 1,
+    name: '重量',
+    values: ['500g', '1kg', '2kg']
+  },
+  {
+    id: 2,
+    name: '包装',
+    values: ['盒装', '袋装']
   }
 ])
-
-const addSpec = () => {
-  specList.value.push({
-    name: '',
-    price: 0,
-    stock: 0
-  })
-}
-
-const removeSpec = (item: SpecItem) => {
-  const index = specList.value.indexOf(item)
-  if (index !== -1) {
-    specList.value.splice(index, 1)
-  }
-}
 
 // 查询
 const handleSearch = () => {
@@ -483,19 +477,27 @@ const handleReset = () => {
   searchForm.name = ''
   searchForm.categoryId = undefined
   searchForm.status = undefined
+  searchForm.minPrice = undefined
+  searchForm.maxPrice = undefined
   handleSearch()
+}
+
+// 导出
+const handleExport = () => {
+  message.success('导出成功')
 }
 
 // 新增
 const handleAdd = () => {
   modalTitle.value = '新增商品'
   formData.id = undefined
-  formData.name = ''
   formData.categoryId = []
-  formData.image = ''
-  formData.price = 0
-  formData.stock = 0
+  formData.name = ''
+  formData.images = []
+  formData.price = undefined
+  formData.stock = undefined
   formData.description = ''
+  formData.sort = 0
   formData.status = 1
   fileList.value = []
   modalVisible.value = true
@@ -505,29 +507,19 @@ const handleAdd = () => {
 const handleEdit = (record: ProductInfo) => {
   modalTitle.value = '编辑商品'
   Object.assign(formData, record)
-  fileList.value = [
-    {
-      uid: '-1',
-      name: 'image.png',
-      status: 'done',
-      url: record.image
-    }
-  ]
+  fileList.value = record.images.map((url, index) => ({
+    uid: `-${index}`,
+    name: `image-${index}.png`,
+    status: 'done',
+    url
+  }))
   modalVisible.value = true
 }
 
-// 规格设置
-const handleSpec = (record: ProductInfo) => {
+// 规格
+const handleSpecs = (record: ProductInfo) => {
   // TODO: 获取商品规格
-  specList.value = [
-    {
-      id: 1,
-      name: '默认',
-      price: record.price,
-      stock: record.stock
-    }
-  ]
-  specVisible.value = true
+  specsVisible.value = true
 }
 
 // 切换状态
@@ -552,18 +544,6 @@ const handleDelete = async (record: ProductInfo) => {
   }
 }
 
-// 导出
-const handleExport = () => {
-  message.success('导出成功')
-}
-
-// 表格变化
-const handleTableChange = (pag: TablePaginationConfig) => {
-  pagination.current = pag.current
-  pagination.pageSize = pag.pageSize
-  fetchData()
-}
-
 // 弹窗确认
 const handleModalOk = () => {
   formRef.value?.validate().then(async () => {
@@ -584,27 +564,28 @@ const handleModalCancel = () => {
   formRef.value?.resetFields()
 }
 
-// 规格弹窗确认
-const handleSpecOk = async () => {
+// 规格确认
+const handleSpecsOk = async () => {
   try {
     // TODO: 调用保存规格API
     message.success('保存成功')
-    specVisible.value = false
+    specsVisible.value = false
   } catch (error) {
     message.error('保存失败')
   }
 }
 
-// 规格弹窗取消
-const handleSpecCancel = () => {
-  specVisible.value = false
-  specList.value = [
-    {
-      name: '',
-      price: 0,
-      stock: 0
-    }
-  ]
+// 规格取消
+const handleSpecsCancel = () => {
+  specsVisible.value = false
+  specsForm.value = {}
+}
+
+// 表格变化
+const handleTableChange = (pag: TablePaginationConfig) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  fetchData()
 }
 
 // 获取表格数据
@@ -616,12 +597,13 @@ const fetchData = async () => {
     tableData.value = [
       {
         id: 1,
-        name: '有机蔬菜礼盒',
         categoryId: [1, 2],
-        image: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
-        price: 199,
-        stock: 100,
-        description: '新鲜有机蔬菜礼盒，包含多种时令蔬菜',
+        name: '新鲜胡萝卜',
+        images: ['https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png'],
+        price: 2.5,
+        stock: 1000,
+        description: '新鲜胡萝卜，农场直供',
+        sort: 1,
         status: 1,
         createTime: '2024-01-01 00:00:00'
       }
@@ -650,18 +632,14 @@ fetchData()
     }
   }
 
-  .text-danger {
-    color: #ff4d4f;
+  .product-image {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
   }
 
-  .dynamic-delete-button {
+  .text-danger {
     color: #ff4d4f;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    &:hover {
-      color: #ff7875;
-    }
   }
 }
 </style> 

@@ -1,7 +1,43 @@
 <template>
   <div class="category-list">
-    <!-- 操作按钮 -->
-    <a-card :bordered="false">
+    <!-- 搜索表单 -->
+    <a-card class="search-card" :bordered="false">
+      <a-form layout="inline" :model="searchForm">
+        <a-form-item label="分类名称">
+          <a-input
+            v-model:value="searchForm.name"
+            placeholder="请输入分类名称"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item label="状态">
+          <a-select
+            v-model:value="searchForm.status"
+            placeholder="请选择状态"
+            style="width: 120px"
+            allow-clear
+          >
+            <a-select-option :value="1">启用</a-select-option>
+            <a-select-option :value="0">禁用</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-space>
+            <a-button type="primary" @click="handleSearch">
+              <template #icon><search-outlined /></template>
+              查询
+            </a-button>
+            <a-button @click="handleReset">
+              <template #icon><redo-outlined /></template>
+              重置
+            </a-button>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </a-card>
+
+    <!-- 表格 -->
+    <a-card class="table-card" :bordered="false">
       <template #extra>
         <a-button type="primary" @click="handleAdd">
           <template #icon><plus-outlined /></template>
@@ -9,53 +45,52 @@
         </a-button>
       </template>
 
-      <!-- 表格 -->
       <a-table
         :columns="columns"
         :data-source="tableData"
         :loading="loading"
-        :pagination="false"
+        :pagination="pagination"
+        @change="handleTableChange"
       >
-        <!-- 图标 -->
-        <template #icon="{ text }">
-          <component :is="text" />
-        </template>
-
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '启用' : '禁用' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleAdd(record)">新增子分类</a>
-            <a-divider type="vertical" />
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要禁用该分类吗？' : '确定要启用该分类吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该分类吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'icon'">
+            <img :src="text" alt="icon" class="category-icon" />
+          </template>
+          
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="text === 1 ? 'success' : 'error'">
+              {{ text === 1 ? '启用' : '禁用' }}
+            </a-tag>
+          </template>
+          
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <a @click="handleAdd(record)">添加子分类</a>
+              <a-divider type="vertical" />
+              <a @click="handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要禁用该分类吗？' : '确定要启用该分类吗？'"
+                @confirm="handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该分类吗？"
+                @confirm="handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -68,7 +103,7 @@
         :wrapper-col="{ span: 18 }"
       >
         <a-form-item
-          v-if="formData.parentId !== undefined"
+          v-if="formData.parentId !== 0"
           label="上级分类"
           name="parentId"
         >
@@ -81,7 +116,6 @@
               value: 'id',
               children: 'children'
             }"
-            :disabled="!!formData.id"
           />
         </a-form-item>
         <a-form-item label="分类名称" name="name">
@@ -91,15 +125,19 @@
           />
         </a-form-item>
         <a-form-item label="分类图标" name="icon">
-          <a-select
-            v-model:value="formData.icon"
-            placeholder="请选择分类图标"
-            style="width: 100%"
+          <a-upload
+            v-model:file-list="fileList"
+            list-type="picture-card"
+            :show-upload-list="false"
+            :before-upload="beforeUpload"
+            @change="handleChange"
           >
-            <a-select-option value="ShoppingOutlined">购物图标</a-select-option>
-            <a-select-option value="AppstoreOutlined">应用图标</a-select-option>
-            <a-select-option value="GiftOutlined">礼物图标</a-select-option>
-          </a-select>
+            <img v-if="formData.icon" :src="formData.icon" alt="icon" class="upload-icon" />
+            <div v-else>
+              <plus-outlined />
+              <div style="margin-top: 8px">上传</div>
+            </div>
+          </a-upload>
         </a-form-item>
         <a-form-item label="排序" name="sort">
           <a-input-number
@@ -123,26 +161,34 @@
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
 import {
-  PlusOutlined,
-  ShoppingOutlined,
-  AppstoreOutlined,
-  GiftOutlined
+  SearchOutlined,
+  RedoOutlined,
+  PlusOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import type { TableColumnType } from 'ant-design-vue'
+import type { TablePaginationConfig } from 'ant-design-vue'
+import type { UploadChangeParam } from 'ant-design-vue'
 
 interface CategoryInfo {
   id: number
-  parentId?: number[]
+  parentId: number
   name: string
   icon: string
   sort: number
   status: number
+  createTime: string
   children?: CategoryInfo[]
 }
 
+interface SearchForm {
+  name?: string
+  status?: number
+  pageNum: number
+  pageSize: number
+}
+
 // 表格列定义
-const columns: TableColumnType[] = [
+const columns = [
   {
     title: '分类名称',
     dataIndex: 'name',
@@ -151,8 +197,7 @@ const columns: TableColumnType[] = [
   {
     title: '图标',
     dataIndex: 'icon',
-    key: 'icon',
-    slots: { customRender: 'icon' }
+    key: 'icon'
   },
   {
     title: '排序',
@@ -162,59 +207,115 @@ const columns: TableColumnType[] = [
   {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
+    key: 'status'
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'createTime',
+    key: 'createTime'
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
+
+// 搜索表单数据
+const searchForm = reactive<SearchForm>({
+  name: '',
+  status: undefined,
+  pageNum: 1,
+  pageSize: 10
+})
 
 // 表格数据
 const loading = ref(false)
 const tableData = ref<CategoryInfo[]>([])
+const pagination = reactive<TablePaginationConfig>({
+  total: 0,
+  current: 1,
+  pageSize: 10,
+  showSizeChanger: true,
+  showQuickJumper: true
+})
 
 // 分类选项
 const categoryOptions = ref<CategoryInfo[]>([])
 
-// 弹窗相关
+// 新增/编辑弹窗
 const modalVisible = ref(false)
 const modalTitle = ref('新增分类')
 const formRef = ref()
 const formData = reactive<Partial<CategoryInfo>>({
+  parentId: 0,
   name: '',
-  icon: undefined,
+  icon: '',
   sort: 0,
   status: 1
 })
 
 // 表单验证规则
 const formRules = {
-  parentId: [
-    { required: true, message: '请选择上级分类' }
-  ],
   name: [
     { required: true, message: '请输入分类名称' }
   ],
   icon: [
-    { required: true, message: '请选择分类图标' }
+    { required: true, message: '请上传分类图标' }
   ],
   sort: [
     { required: true, message: '请输入排序号' }
   ]
 }
 
+// 图片上传相关
+const fileList = ref([])
+const beforeUpload = (file: File) => {
+  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
+  if (!isJpgOrPng) {
+    message.error('只能上传JPG/PNG格式的图片!')
+  }
+  const isLt2M = file.size / 1024 / 1024 < 2
+  if (!isLt2M) {
+    message.error('图片大小不能超过2MB!')
+  }
+  return isJpgOrPng && isLt2M
+}
+
+const handleChange = (info: UploadChangeParam) => {
+  if (info.file.status === 'uploading') {
+    loading.value = true
+    return
+  }
+  if (info.file.status === 'done') {
+    // TODO: 处理上传成功后的逻辑
+    formData.icon = info.file.response.url
+    loading.value = false
+  }
+}
+
+// 查询
+const handleSearch = () => {
+  pagination.current = 1
+  fetchData()
+}
+
+// 重置
+const handleReset = () => {
+  searchForm.name = ''
+  searchForm.status = undefined
+  handleSearch()
+}
+
 // 新增
 const handleAdd = (record?: CategoryInfo) => {
   modalTitle.value = record ? '新增子分类' : '新增分类'
   formData.id = undefined
-  formData.parentId = record ? [record.id] : undefined
+  formData.parentId = record ? record.id : 0
   formData.name = ''
-  formData.icon = undefined
+  formData.icon = ''
   formData.sort = 0
   formData.status = 1
+  fileList.value = []
   modalVisible.value = true
 }
 
@@ -222,6 +323,14 @@ const handleAdd = (record?: CategoryInfo) => {
 const handleEdit = (record: CategoryInfo) => {
   modalTitle.value = '编辑分类'
   Object.assign(formData, record)
+  fileList.value = [
+    {
+      uid: '-1',
+      name: 'icon.png',
+      status: 'done',
+      url: record.icon
+    }
+  ]
   modalVisible.value = true
 }
 
@@ -267,66 +376,45 @@ const handleModalCancel = () => {
   formRef.value?.resetFields()
 }
 
+// 表格变化
+const handleTableChange = (pag: TablePaginationConfig) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  fetchData()
+}
+
 // 获取表格数据
 const fetchData = async () => {
   loading.value = true
   try {
     // TODO: 调用查询API
     // 模拟数据
-    const data = [
+    tableData.value = [
       {
         id: 1,
+        parentId: 0,
         name: '蔬菜水果',
-        icon: 'ShoppingOutlined',
+        icon: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
         sort: 1,
         status: 1,
+        createTime: '2024-01-01 00:00:00',
         children: [
           {
             id: 2,
-            parentId: [1],
+            parentId: 1,
             name: '新鲜蔬菜',
-            icon: 'AppstoreOutlined',
+            icon: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
             sort: 1,
-            status: 1
-          },
-          {
-            id: 3,
-            parentId: [1],
-            name: '新鲜水果',
-            icon: 'GiftOutlined',
-            sort: 2,
-            status: 1
-          }
-        ]
-      },
-      {
-        id: 4,
-        name: '肉禽蛋品',
-        icon: 'ShoppingOutlined',
-        sort: 2,
-        status: 1,
-        children: [
-          {
-            id: 5,
-            parentId: [4],
-            name: '猪肉',
-            icon: 'AppstoreOutlined',
-            sort: 1,
-            status: 1
-          },
-          {
-            id: 6,
-            parentId: [4],
-            name: '牛肉',
-            icon: 'GiftOutlined',
-            sort: 2,
-            status: 1
+            status: 1,
+            createTime: '2024-01-01 00:00:00'
           }
         ]
       }
     ]
-    tableData.value = data
-    categoryOptions.value = data
+    pagination.total = 1
+    
+    // 更新分类选项
+    categoryOptions.value = tableData.value
   } catch (error) {
     message.error('获取数据失败')
   } finally {
@@ -340,6 +428,28 @@ fetchData()
 
 <style lang="less" scoped>
 .category-list {
+  .search-card {
+    margin-bottom: 16px;
+  }
+
+  .table-card {
+    :deep(.ant-card-body) {
+      padding-top: 0;
+    }
+  }
+
+  .category-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+  }
+
+  .upload-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
   .text-danger {
     color: #ff4d4f;
   }
