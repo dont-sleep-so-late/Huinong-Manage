@@ -6,6 +6,7 @@
     class="layout-tabs"
     :hide-add="true"
     @edit="handleTabEdit"
+    @tabClick="handleTabClick"
   >
     <a-tab-pane
       v-for="tab in visitedViews"
@@ -68,6 +69,21 @@ const handleTabEdit = (targetKey: string) => {
     router.push(lastView.path)
   }
 }
+
+// 标签页点击
+const handleTabClick = (key: string) => {
+  router.push(key)
+}
+
+// 监听activeKey变化
+watch(
+  () => activeTab.value,
+  (newPath) => {
+    if (newPath !== route.path) {
+      router.push(newPath)
+    }
+  }
+)
 </script>
 
 <style lang="less" scoped>

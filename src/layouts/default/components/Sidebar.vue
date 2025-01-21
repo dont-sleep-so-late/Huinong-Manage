@@ -25,11 +25,11 @@
             <template #title>{{ menu.meta?.title }}</template>
             <a-menu-item
               v-for="child in menu.children"
-              :key="menu.path + '/' + child.path"
-              @click="handleMenuClick(menu.path + '/' + child.path)"
+              :key="`/${menu.path}/${child.path}`"
+              @click="handleMenuClick(`/${menu.path}/${child.path}`)"
             >
               <template #icon v-if="child.meta?.icon">
-                <component :is="iconMap[child.meta.icon]" />
+                <component :is="child.meta.icon" />
               </template>
               {{ child.meta?.title }}
             </a-menu-item>
@@ -38,7 +38,9 @@
         <!-- 无子菜单 -->
         <template v-else>
           <a-menu-item :key="menu.path" @click="handleMenuClick(menu.path)">
-            <component :is="menu.meta?.icon" />
+            <template #icon v-if="menu.meta?.icon">
+              <component :is="menu.meta.icon" />
+            </template>
             <span>{{ menu.meta?.title }}</span>
           </a-menu-item>
         </template>
@@ -49,7 +51,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, RouteRecordRaw } from 'vue-router'
 import { useAppStore, usePermissionStore } from '@/store'
 import {
   DashboardOutlined,
@@ -65,6 +67,20 @@ import {
   CustomerServiceOutlined,
   SettingOutlined
 } from '@ant-design/icons-vue'
+
+interface RouteMeta {
+  title?: string;
+  icon?: string;
+  hidden?: boolean;
+}
+
+interface RouteWithMeta {
+  path: string;
+  name?: string;
+  meta?: RouteMeta;
+  children?: RouteWithMeta[];
+  component?: any;
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -94,7 +110,7 @@ const openKeys = ref<string[]>([])
 // 监听路由变化
 watch(
   () => route.path,
-  (path) => {
+  (path: string) => {
     selectedKeys.value = [path]
     // 更新展开的子菜单
     const matched = route.matched
@@ -106,18 +122,24 @@ watch(
 )
 
 const menus = computed(() => {
-  const routes = permissionStore.filterRoutes
-  return routes.map(route => ({
-    ...route,
+  const routes = permissionStore.filterRoutes as RouteWithMeta[]
+  // 获取Layout路由下的children
+  const layoutRoute = routes.find(route => route.name === 'Layout')
+  if (!layoutRoute?.children) return []
+  
+  return layoutRoute.children.map((route: RouteWithMeta) => ({
+    path: route.path,
+    name: route.name,
     meta: {
       ...route.meta,
-      icon: route.meta?.icon ? iconMap[route.meta.icon] : null
+      icon: route.meta?.icon ? iconMap[route.meta.icon as keyof typeof iconMap] : null
     },
-    children: route.children?.map(child => ({
-      ...child,
+    children: route.children?.map((child: RouteWithMeta) => ({
+      path: child.path,
+      name: child.name,
       meta: {
         ...child.meta,
-        icon: child.meta?.icon ? iconMap[child.meta.icon] : null
+        icon: child.meta?.icon ? iconMap[child.meta.icon as keyof typeof iconMap] : null
       }
     }))
   }))
