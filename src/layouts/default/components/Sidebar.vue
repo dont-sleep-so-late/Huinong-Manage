@@ -65,7 +65,8 @@ import {
   ToolOutlined,
   OrderedListOutlined,
   CustomerServiceOutlined,
-  SettingOutlined
+  SettingOutlined,
+  GiftOutlined
 } from '@ant-design/icons-vue'
 
 interface RouteMeta {
@@ -100,7 +101,8 @@ const iconMap: Record<string, any> = {
   category: AppstoreOutlined,
   spec: ToolOutlined,
   list: OrderedListOutlined,
-  'after-sale': CustomerServiceOutlined
+  'after-sale': CustomerServiceOutlined,
+  gift: GiftOutlined
 }
 
 // 菜单相关
@@ -115,7 +117,7 @@ watch(
     // 更新展开的子菜单
     const matched = route.matched
     if (matched.length > 1) {
-      openKeys.value = matched.slice(0, -1).map(item => item.path)
+      openKeys.value = matched.slice(0, -1).map((item: any) => item.path)
     }
   },
   { immediate: true }

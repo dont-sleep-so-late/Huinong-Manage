@@ -23,7 +23,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
     redirect: "/dashboard",
     children: [
       {
-        path: "dashboard",
+        path: "/dashboard",
         name: "Dashboard",
         component: () => import("@/views/dashboard/index.vue"),
         meta: {
@@ -129,6 +129,25 @@ export const asyncRoutes: RouteRecordRaw[] = [
             meta: {
               title: "售后管理",
               icon: "after-sale",
+            },
+          },
+        ],
+      },
+      {
+        path: "marketing",
+        name: "Marketing",
+        meta: {
+          title: "营销管理",
+          icon: "gift",
+        },
+        children: [
+          {
+            path: "banner",
+            name: "Banner",
+            component: () => import("@/views/marketing/banner/index.vue"),
+            meta: {
+              title: "轮播图管理",
+              icon: "picture",
             },
           },
         ],
