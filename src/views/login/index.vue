@@ -4,54 +4,94 @@
       <!-- 登录表单 -->
       <div class="form-container sign-in-container">
         <div class="form-content">
-          <h1>登录</h1>
-          <div class="social-container">
-            <a href="#" class="social">
-              <WechatOutlined class="social-icon" />
-            </a>
-            <a href="#" class="social">
-              <QqOutlined class="social-icon" />
-            </a>
-            <a href="#" class="social">
-              <WeiboOutlined class="social-icon" />
-            </a>
-          </div>
-          <span>或使用您的账号</span>
+          <h1>惠农商城后台管理系统</h1>
           <a-form
+            ref="formRef"
             :model="loginForm"
+            :rules="rules"
             @finish="handleLogin"
           >
+            <!-- 登录方式切换 -->
+            <a-form-item>
+              <a-radio-group v-model:value="loginForm.loginType" button-style="solid" @change="handleLoginTypeChange">
+                <a-radio-button value="phone">手机号登录</a-radio-button>
+                <a-radio-button value="email">邮箱登录</a-radio-button>
+                <a-radio-button value="sms">验证码登录</a-radio-button>
+              </a-radio-group>
+            </a-form-item>
+
+            <!-- 账号输入框 -->
             <a-form-item
-              name="username"
-              :rules="[{ required: true, message: '请输入用户名' }]"
+              name="account"
+              :rules="accountRules"
             >
               <a-input
-                v-model:value="loginForm.username"
-                placeholder="用户名"
+                v-model:value="loginForm.account"
+                :placeholder="getAccountPlaceholder"
                 size="large"
               >
                 <template #prefix>
-                  <UserOutlined class="form-icon" />
+                  <component :is="getAccountIcon" class="form-icon" />
                 </template>
               </a-input>
             </a-form-item>
-            <a-form-item
-              name="password"
-              :rules="[{ required: true, message: '请输入密码' }]"
-            >
-              <a-input-password
-                v-model:value="loginForm.password"
-                placeholder="密码"
-                size="large"
+
+            <!-- 密码/验证码输入框 -->
+            <template v-if="loginForm.loginType !== 'sms'">
+              <a-form-item
+                name="password"
+                :rules="[
+                  { required: true, message: '请输入密码' },
+                  { min: 6, message: '密码不能少于6个字符' }
+                ]"
               >
-                <template #prefix>
-                  <LockOutlined class="form-icon" />
-                </template>
-              </a-input-password>
-            </a-form-item>
+                <a-input-password
+                  v-model:value="loginForm.password"
+                  placeholder="请输入密码"
+                  size="large"
+                >
+                  <template #prefix>
+                    <LockOutlined class="form-icon" />
+                  </template>
+                </a-input-password>
+              </a-form-item>
+            </template>
+            <template v-else>
+              <a-form-item
+                name="code"
+                :rules="[
+                  { required: true, message: '请输入验证码' },
+                  { len: 6, message: '验证码为6位数字' }
+                ]"
+              >
+                <a-input-group compact>
+                  <a-input
+                    v-model:value="loginForm.code"
+                    placeholder="请输入验证码"
+                    style="width: calc(100% - 120px)"
+                    size="large"
+                  >
+                    <template #prefix>
+                      <SafetyOutlined class="form-icon" />
+                    </template>
+                  </a-input>
+                  <a-button
+                    type="primary"
+                    :disabled="!!countdown || !isValidPhone"
+                    :loading="sendingCode"
+                    class="verify-code-btn"
+                    size="large"
+                    @click="handleSendCode"
+                  >
+                    {{ countdown ? `${countdown}s后重试` : '获取验证码' }}
+                  </a-button>
+                </a-input-group>
+              </a-form-item>
+            </template>
+
             <div class="form-options">
               <a-checkbox v-model:checked="loginForm.rememberMe">记住我</a-checkbox>
-              <a href="#">忘记密码？</a>
+              <a href="#" @click.prevent="handleForgotPassword">忘记密码？</a>
             </div>
             <a-button type="primary" html-type="submit" :loading="loading" block size="large">
               登录
@@ -65,16 +105,31 @@
         <div class="form-content">
           <h1>注册</h1>
           <a-form
+            ref="registerFormRef"
             :model="registerForm"
+            :rules="registerRules"
             @finish="handleRegister"
           >
+            <!-- 注册方式切换 -->
+            <a-form-item>
+              <a-radio-group v-model:value="registerForm.registerType" button-style="solid" @change="handleRegisterTypeChange">
+                <a-radio-button value="phone">手机号注册</a-radio-button>
+                <a-radio-button value="email">邮箱注册</a-radio-button>
+              </a-radio-group>
+            </a-form-item>
+
+            <!-- 用户名 -->
             <a-form-item
               name="username"
-              :rules="[{ required: true, message: '请输入用户名' }]"
+              :rules="[
+                { required: true, message: '请输入用户名' },
+                { min: 2, message: '用户名至少2个字符' },
+                { max: 20, message: '用户名最多20个字符' }
+              ]"
             >
               <a-input
                 v-model:value="registerForm.username"
-                placeholder="用户名"
+                placeholder="请输入用户名"
                 size="large"
               >
                 <template #prefix>
@@ -82,30 +137,67 @@
                 </template>
               </a-input>
             </a-form-item>
+
+            <!-- 手机号/邮箱 -->
             <a-form-item
-              name="email"
-              :rules="[
-                { required: true, message: '请输入邮箱' },
-                { type: 'email', message: '请输入正确的邮箱格式' }
-              ]"
+              name="account"
+              :rules="registerAccountRules"
             >
               <a-input
-                v-model:value="registerForm.email"
-                placeholder="邮箱"
+                v-model:value="registerForm.account"
+                :placeholder="registerAccountPlaceholder"
                 size="large"
               >
                 <template #prefix>
-                  <MailOutlined class="form-icon" />
+                  <component :is="registerAccountIcon" class="form-icon" />
                 </template>
               </a-input>
             </a-form-item>
+
+            <!-- 验证码 -->
+            <a-form-item
+              name="code"
+              :rules="[
+                { required: true, message: '请输入验证码' },
+                { len: 6, message: '验证码为6位数字' }
+              ]"
+            >
+              <a-input-group compact>
+                <a-input
+                  v-model:value="registerForm.code"
+                  placeholder="请输入验证码"
+                  style="width: calc(100% - 120px)"
+                  size="large"
+                >
+                  <template #prefix>
+                    <SafetyOutlined class="form-icon" />
+                  </template>
+                </a-input>
+                <a-button
+                  type="primary"
+                  :disabled="!!registerCountdown || !isValidRegisterAccount"
+                  :loading="sendingRegisterCode"
+                  class="verify-code-btn"
+                  size="large"
+                  @click="handleSendRegisterCode"
+                >
+                  {{ registerCountdown ? `${registerCountdown}s后重试` : '获取验证码' }}
+                </a-button>
+              </a-input-group>
+            </a-form-item>
+
+            <!-- 密码 -->
             <a-form-item
               name="password"
-              :rules="[{ required: true, message: '请输入密码' }]"
+              :rules="[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码不能少于6个字符' },
+                { max: 20, message: '密码不能超过20个字符' }
+              ]"
             >
               <a-input-password
                 v-model:value="registerForm.password"
-                placeholder="密码"
+                placeholder="请输入密码"
                 size="large"
               >
                 <template #prefix>
@@ -113,6 +205,26 @@
                 </template>
               </a-input-password>
             </a-form-item>
+
+            <!-- 确认密码 -->
+            <a-form-item
+              name="confirmPassword"
+              :rules="[
+                { required: true, message: '请确认密码' },
+                { validator: validateConfirmPassword }
+              ]"
+            >
+              <a-input-password
+                v-model:value="registerForm.confirmPassword"
+                placeholder="请确认密码"
+                size="large"
+              >
+                <template #prefix>
+                  <LockOutlined class="form-icon" />
+                </template>
+              </a-input-password>
+            </a-form-item>
+
             <a-button type="primary" html-type="submit" :loading="loading" block size="large">
               注册
             </a-button>
@@ -144,18 +256,21 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import {
+import { 
   UserOutlined,
   LockOutlined,
   MailOutlined,
-  WechatOutlined,
-  QqOutlined,
-  WeiboOutlined
+  MobileOutlined,
+  SafetyOutlined
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store'
+import type { LoginParams, LoginType, CodeType } from '@/api/auth'
+import type { FormInstance } from 'ant-design-vue'
+import type { Rule } from 'ant-design-vue/es/form'
+import { sendCode, register } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -166,29 +281,254 @@ const isSignUpMode = ref(false)
 
 // 加载状态
 const loading = ref(false)
+const sendingCode = ref(false)
+
+// 倒计时
+const countdown = ref(0)
+let timer: NodeJS.Timeout | null = null
+
+// 表单引用
+const formRef = ref<FormInstance>()
 
 // 登录表单数据
 const loginForm = reactive({
-  username: '',
+  account: '',
   password: '',
+  code: '',
+  loginType: 'phone' as LoginType,
   rememberMe: false
 })
+
+// 注册表单引用
+const registerFormRef = ref<FormInstance>()
 
 // 注册表单数据
 const registerForm = reactive({
   username: '',
-  email: '',
-  password: ''
+  account: '',
+  password: '',
+  confirmPassword: '',
+  code: '',
+  registerType: 'phone' as 'phone' | 'email'
 })
+
+// 注册倒计时
+const registerCountdown = ref(0)
+const sendingRegisterCode = ref(false)
+let registerTimer: NodeJS.Timeout | null = null
+
+// 获取账号输入框占位符
+const getAccountPlaceholder = computed(() => {
+  switch (loginForm.loginType) {
+    case 'phone':
+      return '请输入手机号'
+    case 'email':
+      return '请输入邮箱'
+    case 'sms':
+      return '请输入手机号'
+    default:
+      return '请输入手机号'
+  }
+})
+
+// 获取账号输入框图标
+const getAccountIcon = computed(() => {
+  switch (loginForm.loginType) {
+    case 'phone':
+    case 'sms':
+      return MobileOutlined
+    case 'email':
+      return MailOutlined
+    default:
+      return UserOutlined
+  }
+})
+
+// 验证手机号是否有效
+const isValidPhone = computed(() => {
+  return (loginForm.loginType === 'phone' || loginForm.loginType === 'sms') && 
+         /^1[3-9]\d{9}$/.test(loginForm.account)
+})
+
+// 注册账号占位符
+const registerAccountPlaceholder = computed(() => {
+  return registerForm.registerType === 'phone' ? '请输入手机号' : '请输入邮箱'
+})
+
+// 注册账号图标
+const registerAccountIcon = computed(() => {
+  return registerForm.registerType === 'phone' ? MobileOutlined : MailOutlined
+})
+
+// 验证注册账号是否有效
+const isValidRegisterAccount = computed(() => {
+  if (registerForm.registerType === 'phone') {
+    return /^1[3-9]\d{9}$/.test(registerForm.account)
+  } else {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(registerForm.account)
+  }
+})
+
+// 表单验证规则
+const rules = {
+  password: [
+    { required: true, message: '请输入密码' },
+    { min: 6, message: '密码不能少于6个字符' }
+  ]
+}
+
+// 验证确认密码
+const validateConfirmPassword = async (_rule: Rule, value: string) => {
+  if (!value) {
+    return Promise.reject('请确认密码')
+  }
+  if (value !== registerForm.password) {
+    return Promise.reject('两次输入的密码不一致')
+  }
+  return Promise.resolve()
+}
+
+// 注册账号验证规则
+const registerAccountRules = computed((): Rule[] => {
+  if (registerForm.registerType === 'phone') {
+    return [
+      { required: true, message: '请输入手机号' },
+      { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'change' }
+    ]
+  } else {
+    return [
+      { required: true, message: '请输入邮箱' },
+      { type: 'email', message: '请输入正确的邮箱格式', trigger: 'change' }
+    ]
+  }
+})
+
+// 注册表单验证规则
+const registerRules = computed(() => ({
+  username: [
+    { required: true, message: '请输入用户名' },
+    { min: 2, message: '用户名至少2个字符' },
+    { max: 20, message: '用户名最多20个字符' }
+  ],
+  password: [
+    { required: true, message: '请输入密码' },
+    { min: 6, message: '密码不能少于6个字符' },
+    { max: 20, message: '密码不能超过20个字符' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码' },
+    { validator: validateConfirmPassword }
+  ],
+  code: [
+    { required: true, message: '请输入验证码' },
+    { len: 6, message: '验证码为6位数字' }
+  ],
+  account: registerAccountRules.value
+}))
+
+// 处理登录方式切换
+const handleLoginTypeChange = () => {
+  // 清空账号输入
+  loginForm.account = ''
+  // 清空密码和验证码
+  loginForm.password = ''
+  loginForm.code = ''
+  // 重置表单验证状态
+  formRef.value?.resetFields()
+}
+
+// 账号验证规则
+const accountRules = computed((): Rule[] => {
+  switch (loginForm.loginType) {
+    case 'phone':
+    case 'sms':
+      return [
+        { required: true, message: '请输入手机号' },
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'change' }
+      ]
+    case 'email':
+      return [
+        { required: true, message: '请输入邮箱' },
+        { type: 'email', message: '请输入正确的邮箱格式', trigger: 'change' }
+      ]
+    default:
+      return [
+        { required: true, message: '请输入手机号' }
+      ]
+  }
+})
+
+// 开始倒计时
+const startCountdown = (seconds: number = 60) => {
+  countdown.value = seconds
+  timer = setInterval(() => {
+    if (countdown.value > 0) {
+      countdown.value--
+    } else {
+      stopCountdown()
+    }
+  }, 1000)
+}
+
+// 停止倒计时
+const stopCountdown = () => {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+  countdown.value = 0
+}
+
+// 处理发送验证码
+const handleSendCode = async () => {
+  try {
+    sendingCode.value = true
+    await sendCode({
+      phone: loginForm.account,
+      type: 'login' as CodeType
+    })
+    message.success('验证码已发送')
+    startCountdown()
+  } catch (error: any) {
+    message.error(error.message || '发送验证码失败')
+  } finally {
+    sendingCode.value = false
+  }
+}
 
 // 处理登录
 const handleLogin = async () => {
   try {
     loading.value = true
-    await userStore.login({
-      username: loginForm.username,
-      password: loginForm.password
-    })
+    await formRef.value?.validate()
+    
+    // 构建登录参数
+    const loginParams: LoginParams = {
+      account: loginForm.account,
+      loginType: loginForm.loginType
+    }
+
+    // 根据登录方式设置不同的参数
+    if (loginForm.loginType === 'sms') {
+      loginParams.code = loginForm.code
+    } else {
+      loginParams.password = loginForm.password
+    }
+
+    // 调用登录接口
+    await userStore.login(loginParams)
+
+    // 记住账号
+    if (loginForm.rememberMe) {
+      localStorage.setItem('rememberMe', 'true')
+      localStorage.setItem('account', loginForm.account)
+      localStorage.setItem('loginType', loginForm.loginType)
+    } else {
+      localStorage.removeItem('rememberMe')
+      localStorage.removeItem('account')
+      localStorage.removeItem('loginType')
+    }
+
     message.success('登录成功')
     const redirect = route.query.redirect as string
     router.push(redirect || '/')
@@ -199,11 +539,77 @@ const handleLogin = async () => {
   }
 }
 
+// 处理忘记密码
+const handleForgotPassword = () => {
+  router.push('/forgot-password')
+}
+
+// 处理注册方式切换
+const handleRegisterTypeChange = () => {
+  registerForm.account = ''
+  registerForm.code = ''
+  registerFormRef.value?.resetFields(['account', 'code'])
+  stopRegisterCountdown()
+}
+
+// 开始注册倒计时
+const startRegisterCountdown = (seconds: number = 60) => {
+  registerCountdown.value = seconds
+  registerTimer = setInterval(() => {
+    if (registerCountdown.value > 0) {
+      registerCountdown.value--
+    } else {
+      stopRegisterCountdown()
+    }
+  }, 1000)
+}
+
+// 停止注册倒计时
+const stopRegisterCountdown = () => {
+  if (registerTimer) {
+    clearInterval(registerTimer)
+    registerTimer = null
+  }
+  registerCountdown.value = 0
+}
+
+// 处理发送注册验证码
+const handleSendRegisterCode = async () => {
+  try {
+    sendingRegisterCode.value = true
+    await sendCode({
+      ...(registerForm.registerType === 'phone' 
+        ? { phone: registerForm.account }
+        : { email: registerForm.account }),
+      type: 'register' as CodeType
+    })
+    message.success('验证码已发送')
+    startRegisterCountdown()
+  } catch (error: any) {
+    message.error(error.message || '发送验证码失败')
+  } finally {
+    sendingRegisterCode.value = false
+  }
+}
+
 // 处理注册
 const handleRegister = async () => {
   try {
     loading.value = true
-    // TODO: 调用注册接口
+    await registerFormRef.value?.validate()
+    
+    // 构建注册参数
+    const registerParams = {
+      username: registerForm.username,
+      password: registerForm.password,
+      code: registerForm.code,
+      registerType: registerForm.registerType,
+      ...(registerForm.registerType === 'phone' 
+        ? { phone: registerForm.account }
+        : { email: registerForm.account })
+    }
+
+    await register(registerParams)
     message.success('注册成功')
     isSignUpMode.value = false
   } catch (error: any) {
@@ -212,6 +618,25 @@ const handleRegister = async () => {
     loading.value = false
   }
 }
+
+// 初始化记住的账号
+const initRememberMe = () => {
+  const rememberMe = localStorage.getItem('rememberMe')
+  if (rememberMe) {
+    loginForm.rememberMe = true
+    loginForm.account = localStorage.getItem('account') || ''
+    loginForm.loginType = (localStorage.getItem('loginType') || 'phone') as LoginType
+  }
+}
+
+// 页面加载时初始化
+initRememberMe()
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  stopCountdown()
+  stopRegisterCountdown()
+})
 </script>
 
 <style lang="less" scoped>
@@ -297,63 +722,6 @@ const handleRegister = async () => {
         color: #001529;
       }
 
-      .social-container {
-        margin: 24px 0 32px;
-        
-        .social {
-          display: inline-flex;
-          justify-content: center;
-          align-items: center;
-          width: 48px;
-          height: 48px;
-          margin: 0 12px;
-          border: 2px solid #e8e8e8;
-          border-radius: 50%;
-          color: #001529;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          
-          .social-icon {
-            font-size: 20px;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          
-          &:hover {
-            color: #fff;
-            background-color: #001529;
-            border-color: #001529;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-          }
-        }
-      }
-
-      &>span {
-        margin-bottom: 32px;
-        color: #666;
-        font-size: 16px;
-      }
-
-      .form-options {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        margin: 24px 0;
-        
-        a {
-          color: #001529;
-          font-size: 14px;
-          transition: all 0.3s ease;
-          
-          &:hover {
-            color: #003a70;
-            text-decoration: underline;
-          }
-        }
-      }
-
       :deep(.ant-form) {
         width: 100%;
         max-width: 320px;
@@ -429,6 +797,24 @@ const handleRegister = async () => {
         .ant-checkbox-checked .ant-checkbox-inner {
           background-color: #001529;
           border-color: #001529;
+        }
+      }
+
+      .form-options {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin: 24px 0;
+        
+        a {
+          color: #001529;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          
+          &:hover {
+            color: #003a70;
+            text-decoration: underline;
+          }
         }
       }
     }
@@ -518,6 +904,26 @@ const handleRegister = async () => {
       right: 0;
       transform: translateX(0);
       opacity: 1;
+    }
+  }
+
+  .verify-code-btn {
+    width: 120px !important;
+    height: 48px !important;
+    margin-top: 0 !important;
+    background-color: #1890ff !important;
+    border-color: #1890ff !important;
+    color: #fff !important;
+    
+    &:hover:not(:disabled) {
+      background-color: #40a9ff !important;
+      border-color: #40a9ff !important;
+    }
+    
+    &:disabled {
+      background-color: #f5f5f5 !important;
+      border-color: #d9d9d9 !important;
+      color: rgba(0, 0, 0, 0.25) !important;
     }
   }
 }

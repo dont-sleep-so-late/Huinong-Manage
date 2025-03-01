@@ -1,6 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
+// 扩展路由元信息类型
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string
+    icon?: string
+    roles?: string[]
+    hidden?: boolean
+  }
+}
+
 // 公共路由
 export const constantRoutes: RouteRecordRaw[] = [
   {
@@ -154,7 +164,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-];
+] as RouteRecordRaw[]
 
 const router = createRouter({
   history: createWebHistory(),

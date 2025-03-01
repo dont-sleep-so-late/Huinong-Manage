@@ -28,12 +28,22 @@ export interface BannerForm {
 
 // 获取轮播图列表
 export function getBannerList(params: BannerQuery) {
-  return http.get<Banner[]>('/banner/list', { params })
+  return http.get<{ data: Banner[]; total: number }>('/banner', { params })
+}
+
+// 获取启用的轮播图列表
+export function getActiveBannerList() {
+  return http.get<Banner[]>('/banner/active')
+}
+
+// 获取轮播图详情
+export function getBannerDetail(id: number) {
+  return http.get<Banner>(`/banner/${id}`)
 }
 
 // 添加轮播图
 export function addBanner(data: BannerForm) {
-  return http.post('/banner/add', data)
+  return http.post('/banner', data)
 }
 
 // 更新轮播图
@@ -48,5 +58,10 @@ export function deleteBanner(id: number) {
 
 // 更新轮播图状态
 export function updateBannerStatus(id: number, status: 0 | 1) {
-  return http.patch(`/banner/${id}/status`, { status })
+  return http.put(`/banner/${id}/status`, { status })
+}
+
+// 更新轮播图排序
+export function updateBannerSort(id: number, sort: number) {
+  return http.put(`/banner/${id}/sort`, { sort })
 } 

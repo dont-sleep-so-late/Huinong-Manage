@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard" v-if="false">
     <!-- 统计卡片 -->
     <a-row :gutter="16">
       <a-col :span="6">

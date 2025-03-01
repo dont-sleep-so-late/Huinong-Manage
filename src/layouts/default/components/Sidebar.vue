@@ -51,8 +51,9 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute, RouteRecordRaw } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAppStore, usePermissionStore } from '@/store'
+import type { MenuItem } from '@/api/auth'
 import {
   DashboardOutlined,
   ShoppingOutlined,
@@ -68,20 +69,6 @@ import {
   SettingOutlined,
   GiftOutlined
 } from '@ant-design/icons-vue'
-
-interface RouteMeta {
-  title?: string;
-  icon?: string;
-  hidden?: boolean;
-}
-
-interface RouteWithMeta {
-  path: string;
-  name?: string;
-  meta?: RouteMeta;
-  children?: RouteWithMeta[];
-  component?: any;
-}
 
 const router = useRouter()
 const route = useRoute()
@@ -124,19 +111,15 @@ watch(
 )
 
 const menus = computed(() => {
-  const routes = permissionStore.filterRoutes as RouteWithMeta[]
-  // 获取Layout路由下的children
-  const layoutRoute = routes.find(route => route.name === 'Layout')
-  if (!layoutRoute?.children) return []
-  
-  return layoutRoute.children.map((route: RouteWithMeta) => ({
+  // 使用新的 sidebarMenus getter
+  return permissionStore.sidebarMenus.map(route => ({
     path: route.path,
     name: route.name,
     meta: {
       ...route.meta,
       icon: route.meta?.icon ? iconMap[route.meta.icon as keyof typeof iconMap] : null
     },
-    children: route.children?.map((child: RouteWithMeta) => ({
+    children: route.children?.map(child => ({
       path: child.path,
       name: child.name,
       meta: {
