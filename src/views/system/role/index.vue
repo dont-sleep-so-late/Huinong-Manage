@@ -19,23 +19,22 @@
         </a-form-item>
         <a-form-item label="状态">
           <a-select
-            v-model:value="searchForm.status"
+            :value="searchForm.status"
             placeholder="请选择状态"
             style="width: 120px"
             allow-clear
-          >
-            <a-select-option :value="1">正常</a-select-option>
-            <a-select-option :value="0">禁用</a-select-option>
-          </a-select>
+            :options="statusOptions"
+            @change="handleStatusChange"
+          />
         </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="handleSearch">
-              <template #icon><search-outlined /></template>
+              <template #icon><SearchOutlined /></template>
               查询
             </a-button>
             <a-button @click="handleReset">
-              <template #icon><redo-outlined /></template>
+              <template #icon><RedoOutlined /></template>
               重置
             </a-button>
           </a-space>
@@ -47,7 +46,7 @@
     <a-card class="table-card" :bordered="false">
       <template #extra>
         <a-button type="primary" @click="handleAdd">
-          <template #icon><plus-outlined /></template>
+          <template #icon><PlusOutlined /></template>
           新增
         </a-button>
       </template>
@@ -58,35 +57,35 @@
         :loading="loading"
         :pagination="pagination"
         @change="handleTableChange"
+        row-key="id"
       >
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '正常' : '禁用' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a @click="handlePermission(record)">权限设置</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要禁用该角色吗？' : '确定要启用该角色吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该角色吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'status'">
+            <a-tag :color="Number(text) === 1 ? 'success' : 'error'">
+              {{ Number(text) === 1 ? '正常' : '禁用' }}
+            </a-tag>
+          </template>
+          <template v-if="column.key === 'action'">
+            <a-space>
+              <a @click="() => handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a @click="() => handlePermission(record)">权限设置</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要禁用该角色吗？' : '确定要启用该角色吗？'"
+                @confirm="() => handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该角色吗？"
+                @confirm="() => handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
@@ -118,12 +117,11 @@
             :disabled="!!formData.id"
           />
         </a-form-item>
-        <a-form-item label="排序" name="sort">
-          <a-input-number
-            v-model:value="formData.sort"
-            :min="0"
-            style="width: 100%"
-            placeholder="请输入排序号"
+        <a-form-item label="描述" name="description">
+          <a-textarea
+            v-model:value="formData.description"
+            :rows="4"
+            placeholder="请输入角色描述"
           />
         </a-form-item>
         <a-form-item label="状态" name="status">
@@ -131,13 +129,6 @@
             <a-radio :value="1">正常</a-radio>
             <a-radio :value="0">禁用</a-radio>
           </a-radio-group>
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="formData.remark"
-            :rows="4"
-            placeholder="请输入备注"
-          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -151,7 +142,7 @@
     >
       <a-tree
         v-model:checkedKeys="checkedKeys"
-        :tree-data="permissionTree"
+        :tree-data="treeData"
         checkable
         :defaultExpandAll="true"
       />
@@ -160,7 +151,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import type { FormInstance } from 'ant-design-vue'
 import {
   SearchOutlined,
   RedoOutlined,
@@ -169,27 +161,23 @@ import {
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
 import type { DataNode } from 'ant-design-vue/es/tree'
-
-interface RoleInfo {
-  id: number
-  name: string
-  code: string
-  sort: number
-  status: number
-  remark: string
-  createTime: string
-}
-
-interface SearchForm {
-  name?: string
-  code?: string
-  status?: number
-  pageNum: number
-  pageSize: number
-}
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { SelectValue } from 'ant-design-vue/es/select'
+import {
+  getRoleList,
+  createRole,
+  updateRole,
+  deleteRole,
+  updateRoleStatus,
+  updateRolePermissions,
+  getRolePermissionTree,
+  type RoleInfo,
+  type RoleQuery,
+  type PermissionNode
+} from '@/api/role'
 
 // 表格列定义
-const columns = [
+const columns: ColumnsType<RoleInfo> = [
   {
     title: '角色名称',
     dataIndex: 'name',
@@ -201,41 +189,45 @@ const columns = [
     key: 'code'
   },
   {
-    title: '排序',
-    dataIndex: 'sort',
-    key: 'sort'
+    title: '描述',
+    dataIndex: 'description',
+    key: 'description'
   },
   {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
-  },
-  {
-    title: '备注',
-    dataIndex: 'remark',
-    key: 'remark'
+    key: 'status'
   },
   {
     title: '创建时间',
-    dataIndex: 'createTime',
-    key: 'createTime'
+    dataIndex: 'createdTime',
+    key: 'createdTime'
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
 
+// 状态选项
+const statusOptions = [
+  { value: 1, label: '正常' },
+  { value: 0, label: '禁用' }
+]
+
 // 搜索表单数据
-const searchForm = reactive<SearchForm>({
+const searchForm = reactive<RoleQuery>({
   name: '',
   code: '',
   status: undefined,
   pageNum: 1,
   pageSize: 10
 })
+
+// 处理状态选择
+const handleStatusChange = (value: SelectValue) => {
+  searchForm.status = value === undefined ? undefined : (Number(value) as 0 | 1)
+}
 
 // 表格数据
 const loading = ref(false)
@@ -251,13 +243,21 @@ const pagination = reactive<TablePaginationConfig>({
 // 新增/编辑弹窗
 const modalVisible = ref(false)
 const modalTitle = ref('新增角色')
-const formRef = ref()
-const formData = reactive<Partial<RoleInfo>>({
+const formRef = ref<FormInstance>()
+
+interface RoleForm {
+  id?: number
+  name: string
+  code: string
+  description: string
+  status: 0 | 1
+}
+
+const formData = reactive<RoleForm>({
   name: '',
   code: '',
-  sort: 0,
-  status: 1,
-  remark: ''
+  description: '',
+  status: 1
 })
 
 // 表单验证规则
@@ -267,152 +267,30 @@ const formRules = {
   ],
   code: [
     { required: true, message: '请输入角色编码' },
-    { pattern: /^[A-Z_]+$/, message: '角色编码只能包含大写字母和下划线' }
+    { pattern: /^[a-z_]+$/, message: '角色编码只能包含小写字母和下划线' }
   ],
-  sort: [
-    { required: true, message: '请输入排序号' }
+  description: [
+    { required: true, message: '请输入角色描述' }
   ]
 }
 
 // 权限设置弹窗
 const permissionVisible = ref(false)
-const checkedKeys = ref<string[]>([])
-const permissionTree = ref<DataNode[]>([
-  {
-    title: '系统管理',
-    key: 'system',
-    children: [
-      {
-        title: '用户管理',
-        key: 'system:user',
-        children: [
-          {
-            title: '查询用户',
-            key: 'system:user:list'
-          },
-          {
-            title: '新增用户',
-            key: 'system:user:add'
-          },
-          {
-            title: '修改用户',
-            key: 'system:user:edit'
-          },
-          {
-            title: '删除用户',
-            key: 'system:user:delete'
-          }
-        ]
-      },
-      {
-        title: '角色管理',
-        key: 'system:role',
-        children: [
-          {
-            title: '查询角色',
-            key: 'system:role:list'
-          },
-          {
-            title: '新增角色',
-            key: 'system:role:add'
-          },
-          {
-            title: '修改角色',
-            key: 'system:role:edit'
-          },
-          {
-            title: '删除角色',
-            key: 'system:role:delete'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    title: '商品管理',
-    key: 'product',
-    children: [
-      {
-        title: '商品列表',
-        key: 'product:list',
-        children: [
-          {
-            title: '查询商品',
-            key: 'product:list:list'
-          },
-          {
-            title: '新增商品',
-            key: 'product:list:add'
-          },
-          {
-            title: '修改商品',
-            key: 'product:list:edit'
-          },
-          {
-            title: '删除商品',
-            key: 'product:list:delete'
-          }
-        ]
-      },
-      {
-        title: '商品分类',
-        key: 'product:category',
-        children: [
-          {
-            title: '查询分类',
-            key: 'product:category:list'
-          },
-          {
-            title: '新增分类',
-            key: 'product:category:add'
-          },
-          {
-            title: '修改分类',
-            key: 'product:category:edit'
-          },
-          {
-            title: '删除分类',
-            key: 'product:category:delete'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    title: '订单管理',
-    key: 'order',
-    children: [
-      {
-        title: '订单列表',
-        key: 'order:list',
-        children: [
-          {
-            title: '查询订单',
-            key: 'order:list:list'
-          },
-          {
-            title: '订单发货',
-            key: 'order:list:delivery'
-          }
-        ]
-      },
-      {
-        title: '售后管理',
-        key: 'order:after-sale',
-        children: [
-          {
-            title: '查询售后',
-            key: 'order:after-sale:list'
-          },
-          {
-            title: '处理售后',
-            key: 'order:after-sale:process'
-          }
-        ]
-      }
-    ]
-  }
-])
+const checkedKeys = ref<(string | number)[]>([])
+const currentRoleId = ref<number>()
+const permissionTree = ref<PermissionNode[]>([])
+
+// 将权限树数据转换为 ant-design-vue 的树形结构
+const convertToTreeData = (nodes: PermissionNode[]): DataNode[] => {
+  return nodes.map(node => ({
+    key: node.id,
+    title: node.name,
+    children: node.children ? convertToTreeData(node.children) : undefined
+  }))
+}
+
+// 将权限树数据转换为 ant-design-vue 的树形结构
+const treeData = computed(() => convertToTreeData(permissionTree.value))
 
 // 查询
 const handleSearch = () => {
@@ -434,30 +312,39 @@ const handleAdd = () => {
   formData.id = undefined
   formData.name = ''
   formData.code = ''
-  formData.sort = 0
+  formData.description = ''
   formData.status = 1
-  formData.remark = ''
   modalVisible.value = true
 }
 
 // 编辑
 const handleEdit = (record: RoleInfo) => {
   modalTitle.value = '编辑角色'
-  Object.assign(formData, record)
+  formData.id = record.id
+  formData.name = record.name
+  formData.code = record.code
+  formData.description = record.description
+  formData.status = record.status
   modalVisible.value = true
 }
 
 // 权限设置
-const handlePermission = (record: RoleInfo) => {
-  // TODO: 获取角色权限
-  checkedKeys.value = ['system:user:list', 'system:role:list']
-  permissionVisible.value = true
+const handlePermission = async (record: RoleInfo) => {
+  currentRoleId.value = record.id
+  try {
+    const { permissionTree , checkedKeys } = await getRolePermissionTree(record.id)
+    permissionTree.value = permissionTree
+    checkedKeys.value =  checkedKeys.map(Number)
+    permissionVisible.value = true
+  } catch (error) {
+    message.error('获取权限数据失败')
+  }
 }
 
 // 切换状态
 const handleToggleStatus = async (record: RoleInfo) => {
   try {
-    // TODO: 调用切换状态API
+    await updateRoleStatus(record.id, record.status === 1 ? 0 : 1)
     message.success(record.status === 1 ? '禁用成功' : '启用成功')
     fetchData()
   } catch (error) {
@@ -468,7 +355,7 @@ const handleToggleStatus = async (record: RoleInfo) => {
 // 删除
 const handleDelete = async (record: RoleInfo) => {
   try {
-    // TODO: 调用删除API
+    await deleteRole(record.id)
     message.success('删除成功')
     fetchData()
   } catch (error) {
@@ -480,7 +367,12 @@ const handleDelete = async (record: RoleInfo) => {
 const handleModalOk = () => {
   formRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用保存API
+      const { id, name, code, description } = formData
+      if (id) {
+        await updateRole(id, { name, code, description })
+      } else {
+        await createRole({ name, code, description })
+      }
       message.success('保存成功')
       modalVisible.value = false
       fetchData()
@@ -499,7 +391,11 @@ const handleModalCancel = () => {
 // 权限设置确认
 const handlePermissionOk = async () => {
   try {
-    // TODO: 调用保存权限API
+    if (!currentRoleId.value) return
+    await updateRolePermissions(
+      currentRoleId.value,
+      checkedKeys.value.map(key => Number(key))
+    )
     message.success('保存成功')
     permissionVisible.value = false
   } catch (error) {
@@ -510,12 +406,16 @@ const handlePermissionOk = async () => {
 // 权限设置取消
 const handlePermissionCancel = () => {
   permissionVisible.value = false
+  currentRoleId.value = undefined
+  checkedKeys.value = []
 }
 
 // 表格变化
 const handleTableChange = (pag: TablePaginationConfig) => {
   pagination.current = pag.current
   pagination.pageSize = pag.pageSize
+  searchForm.pageNum = pag.current ?? 1
+  searchForm.pageSize = pag.pageSize ?? 10
   fetchData()
 }
 
@@ -523,20 +423,9 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    tableData.value = [
-      {
-        id: 1,
-        name: '管理员',
-        code: 'ADMIN',
-        sort: 1,
-        status: 1,
-        remark: '系统管理员，拥有所有权限',
-        createTime: '2024-01-01 00:00:00'
-      }
-    ]
-    pagination.total = 1
+    const data = await getRoleList(searchForm)
+    tableData.value = data.records
+    pagination.total = data.total
   } catch (error) {
     message.error('获取数据失败')
   } finally {
