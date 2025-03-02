@@ -10,26 +10,27 @@
       <h1 v-show="!appStore.collapsed">惠农商城</h1>
     </div>
     <a-menu
-      v-model:selectedKeys="selectedKeys"
-      v-model:openKeys="openKeys"
+      :selectedKeys="selectedKeys"
+      :openKeys="openKeys"
       mode="inline"
       theme="dark"
+      @openChange="handleOpenChange"
     >
       <template v-for="menu in menus" :key="menu.path">
         <!-- 有子菜单 -->
         <template v-if="menu.children && menu.children.length > 0">
           <a-sub-menu :key="menu.path">
             <template #icon>
-              <component :is="menu.meta?.icon" />
+              <component :is="getIcon(menu.meta?.icon)" />
             </template>
             <template #title>{{ menu.meta?.title }}</template>
             <a-menu-item
               v-for="child in menu.children"
-              :key="`/${menu.path}/${child.path}`"
-              @click="handleMenuClick(`/${menu.path}/${child.path}`)"
+              :key="child.path"
+              @click="handleMenuClick(child.path)"
             >
               <template #icon v-if="child.meta?.icon">
-                <component :is="child.meta.icon" />
+                <component :is="getIcon(child.meta.icon)" />
               </template>
               {{ child.meta?.title }}
             </a-menu-item>
@@ -39,7 +40,7 @@
         <template v-else>
           <a-menu-item :key="menu.path" @click="handleMenuClick(menu.path)">
             <template #icon v-if="menu.meta?.icon">
-              <component :is="menu.meta.icon" />
+              <component :is="getIcon(menu.meta.icon)" />
             </template>
             <span>{{ menu.meta?.title }}</span>
           </a-menu-item>
@@ -54,6 +55,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore, usePermissionStore } from '@/store'
 import type { MenuItem } from '@/api/auth'
+import type { Key } from 'ant-design-vue/es/_util/type'
 import {
   DashboardOutlined,
   ShoppingOutlined,
@@ -76,7 +78,7 @@ const appStore = useAppStore()
 const permissionStore = usePermissionStore()
 
 // 图标映射
-const iconMap: Record<string, any> = {
+const iconMap = {
   dashboard: DashboardOutlined,
   setting: SettingOutlined,
   shopping: ShoppingOutlined,
@@ -90,49 +92,50 @@ const iconMap: Record<string, any> = {
   list: OrderedListOutlined,
   'after-sale': CustomerServiceOutlined,
   gift: GiftOutlined
+} as const
+
+// 获取图标组件
+const getIcon = (iconName?: string) => {
+  if (!iconName) return null
+  return iconMap[iconName as keyof typeof iconMap] || null
 }
 
 // 菜单相关
-const selectedKeys = ref<string[]>([route.path])
+const selectedKeys = computed(() => [route.path])
 const openKeys = ref<string[]>([])
 
 // 监听路由变化
 watch(
-  () => route.path,
-  (path: string) => {
-    selectedKeys.value = [path]
+  () => route.matched,
+  (matched) => {
     // 更新展开的子菜单
-    const matched = route.matched
     if (matched.length > 1) {
-      openKeys.value = matched.slice(0, -1).map((item: any) => item.path)
+      openKeys.value = matched.slice(0, -1).map(item => item.path)
     }
   },
   { immediate: true }
 )
 
+// 获取菜单数据
 const menus = computed(() => {
-  // 使用新的 sidebarMenus getter
-  return permissionStore.sidebarMenus.map(route => ({
-    path: route.path,
-    name: route.name,
-    meta: {
-      ...route.meta,
-      icon: route.meta?.icon ? iconMap[route.meta.icon as keyof typeof iconMap] : null
-    },
-    children: route.children?.map(child => ({
-      path: child.path,
-      name: child.name,
-      meta: {
-        ...child.meta,
-        icon: child.meta?.icon ? iconMap[child.meta.icon as keyof typeof iconMap] : null
-      }
-    }))
-  }))
+  const sidebarMenus = permissionStore.sidebarMenus
+  console.log('侧边栏菜单:', sidebarMenus)
+  return sidebarMenus
 })
+
+// 处理子菜单展开/收起
+const handleOpenChange = (keys: Key[]) => {
+  openKeys.value = keys.map(key => key.toString())
+}
 
 // 菜单点击
 const handleMenuClick = (path: string) => {
-  router.push(path)
+  console.log('点击菜单:', path)
+  try {
+    router.push(path)
+  } catch (error) {
+    console.error('路由跳转失败:', error)
+  }
 }
 </script>
 

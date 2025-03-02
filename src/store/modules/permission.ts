@@ -21,114 +21,34 @@ interface MenuResponse {
   menus: MenuItem[];
 }
 
-// 检查当前用户是否有该路由权限
-const hasPermission = (route: RouteRecordRaw, roles: string[]): boolean => {
-  if (route.meta && route.meta.roles) {
-    return roles.some((role) => (route.meta?.roles as string[]).includes(role));
-  }
-  // 默认允许访问
-  return true;
-};
-
-// 根据角色过滤可访问路由
-const filterAsyncRoutes = (
-  routes: RouteRecordRaw[],
-  roles: string[]
-): RouteRecordRaw[] => {
-  const res: RouteRecordRaw[] = [];
-
-  routes.forEach((route) => {
-    const tmp = { ...route };
-    if (hasPermission(tmp, roles)) {
-      if (tmp.children) {
-        tmp.children = filterAsyncRoutes(tmp.children, roles);
-      }
-      res.push(tmp);
-    }
-  });
-
-  return res;
-};
-
-// 获取组件
-export const findComponentByPath = (path: string): any => {
-  try {
-    const component = import.meta.glob("@/views/**/*.vue");
-    for (const key in component) {
-      if (key.includes(path)) {
-        return component[key];
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("获取组件失败", error);
-    return null;
-  }
-};
-
-// 自定义路由元信息，扩展Vue Router的RouteMeta
-interface CustomRouteMeta extends VueRouteMeta {
-  title?: string;
-  icon?: string;
-  roles?: string[];
-  hidden?: boolean;
-  breadcrumb?: boolean;
-  activeMenu?: string;
-  keepAlive?: boolean;
-  [key: string]: any;
+// 修改为实际的响应类型
+interface MenuApiResponse {
+  menus: MenuItem[];
 }
 
-// 路由项接口
-interface RouteItem {
-  path: string;
-  component?: string;
-  name?: string;
-  redirect?: string;
-  meta?: CustomRouteMeta;
-  children?: RouteItem[];
-}
-
-// 将后端返回的路由数据转换为vue-router需要的格式
-export const generateRoutes = (routes: RouteItem[]): RouteRecordRaw[] => {
-  return routes.map((route) => {
-    const newRoute = {
-      path: route.path,
-      name: route.name,
-      meta: route.meta as VueRouteMeta,
-      children: route.children ? generateRoutes(route.children) : undefined,
-      component: undefined as RouteComponent | undefined,
-    } as RouteRecordRaw;
-
-    if (route.redirect) {
-      newRoute.redirect = route.redirect;
-    }
-
-    if (route.component) {
-      if (
-        route.component === "Layout" ||
-        route.component === "layouts/default/index"
-      ) {
-        newRoute.component = () => import("@/layouts/default/index.vue");
-      } else {
-        // 动态加载组件
-        const path = route.component.replace("views/", "");
-        newRoute.component = findComponentByPath(path);
-      }
-    }
-
-    return newRoute;
-  });
-};
-
 // 获取组件
-const getComponent = (component: string): RouteComponent => {
-  if (component === "Layout" || component === "layouts/default/index") {
-    return () => import("@/layouts/default/index.vue");
+export const findComponentByPath = (path: string): RouteComponent => {
+  // 如果是布局组件
+  if (path === 'Layout' || path === 'layouts/default/index') {
+    return () => import('@/layouts/default/index.vue')
   }
-  // 动态加载组件
-  const path = component.replace(/^views\//, "");
-  return () => import(`@/views/${path}.vue`);
-};
+
+  // 移除开头的 views/ 和结尾的 .vue（如果有）
+  const normalizedPath = path.replace(/^views\//, '').replace(/\.vue$/, '')
+
+  // 使用 Vite 的动态导入模式
+  const modules = import.meta.glob('@/views/**/*.vue')
+  const componentPath = `/src/views/${normalizedPath}.vue`
+  
+  const matchedModule = modules[componentPath]
+  if (!matchedModule) {
+    console.error(`找不到组件: ${componentPath}`)
+    // 返回一个空组件作为后备方案
+    return () => import('@/components/NotFound.vue')
+  }
+  
+  return matchedModule
+}
 
 // 将后端返回的菜单转换为路由配置
 const transformRoutes = (menus: MenuItem[]): RouteRecordRaw[] => {
@@ -139,185 +59,184 @@ const transformRoutes = (menus: MenuItem[]): RouteRecordRaw[] => {
     const baseRoute: RouteRecordRaw = {
       path,
       name,
-      component: component ? getComponent(component) : undefined,
+      component: component ? findComponentByPath(component) : undefined,
       meta,
-      children:
-        children && children.length > 0 ? transformRoutes(children) : [],
+      children: children && children.length > 0 ? transformRoutes(children) : [],
     };
 
     // 添加重定向配置（如果有）
     if (redirect) {
-      baseRoute.redirect =
-        typeof redirect === "string" ? redirect : redirect.path;
+      baseRoute.redirect = redirect;
     }
 
     return baseRoute;
   });
 };
 
-// 去除重复的菜单项
-const deduplicateMenus = (menus: MenuItem[]): MenuItem[] => {
-  const seen = new Map<string, MenuItem>();
+// 修正子路由的路径
+const fixRoutePaths = (menu: MenuItem, parentPath = ''): MenuItem => {
+  const result = { ...menu };
 
-  menus.forEach((menu) => {
-    const key = `${menu.path}-${menu.name}`;
-    if (!seen.has(key)) {
-      seen.set(key, menu);
+  // 如果是根路由，保持原样
+  if (result.path === '/') {
+    // 递归处理子路由
+    if (result.children?.length) {
+      result.children = result.children.map(child => fixRoutePaths(child, result.path));
     }
-  });
+    return result;
+  }
 
-  const result = Array.from(seen.values());
+  // 处理非根路由的路径
+  const normalizedPath = result.path.startsWith('/') ? result.path.slice(1) : result.path;
+  
+  // 如果有父路径，拼接父路径
+  if (parentPath) {
+    const normalizedParentPath = parentPath === '/' ? '' : parentPath;
+    result.path = `${normalizedParentPath}/${normalizedPath}`;
+  } else {
+    result.path = `/${normalizedPath}`;
+  }
 
-  // 递归处理子菜单
-  result.forEach((menu) => {
-    if (menu.children && menu.children.length > 0) {
-      menu.children = deduplicateMenus(menu.children);
-    }
-  });
+  // 递归处理子路由
+  if (result.children?.length) {
+    result.children = result.children.map(child => fixRoutePaths(child, result.path));
+  }
 
   return result;
 };
 
-interface PermissionState {
-  routes: RouteRecordRaw[];
-  addRoutes: RouteRecordRaw[];
-  menus: MenuItem[];
-}
-
-export const usePermissionStore = defineStore("permission", {
-  state: (): PermissionState => ({
-    routes: [],
-    addRoutes: [],
-    menus: [],
-  }),
-
-  getters: {
-    getRoutes: (state): RouteRecordRaw[] => state.routes,
-    getMenus: (state): MenuItem[] => state.menus,
-    // 添加一个新的 getter 用于侧边栏
-    sidebarMenus: (state): MenuItem[] => {
-      const findLayoutRoute = (routes: MenuItem[]): MenuItem[] => {
-        for (const route of routes) {
-          if (route.name === "Layout" && route.children) {
-            return route.children.filter((child) => !child.meta?.hidden);
-          }
-        }
-        return [];
-      };
-      return findLayoutRoute(state.menus);
-    },
-  },
-
-  actions: {
-    // 根据角色生成路由
-    async generateRoutesFromRole(role: string) {
-      try {
-        // 1. 从后端获取菜单数据
-        const response =
-          (await getUserMenus()) as unknown as MenuResponse;
-
-        // 打印原始响应数据
-        console.log("API响应数据:", response);
-
-        // 修改数据校验逻辑
-        if (!response?.menus) {
-          console.error("菜单数据无效");
-          return this.getDefaultRoutes();
-        }
-
-        // 去重处理
-        const dedupedMenus = deduplicateMenus(response.menus);
-        console.log("去重后的菜单数据:", dedupedMenus);
-
-        // 获取第一个根路由（Layout）
-        const rootRoute = dedupedMenus[0];
-        if (!rootRoute?.path || !rootRoute?.name) {
-          console.error("根路由配置无效");
-          return this.getDefaultRoutes();
-        }
-
-        // 修正子路由的路径
-        const fixRoutePaths = (menu: MenuItem, parentPath = ""): MenuItem => {
-          const result = { ...menu };
-
-          // 如果是根路由的直接子路由，且路径以/开头，去掉开头的/
-          if (parentPath === "/" && result.path.startsWith("/")) {
-            result.path = result.path.slice(1);
-          }
-
-          // 如果不是以/开头的路径，且有父路径，拼接父路径
-          if (
-            !result.path.startsWith("/") &&
-            parentPath &&
-            parentPath !== "/"
-          ) {
-            result.path = `${parentPath}/${result.path}`;
-          }
-
-          // 递归处理子路由
-          if (result.children?.length) {
-            result.children = result.children.map((child) =>
-              fixRoutePaths(child, result.path === "/" ? "" : result.path)
-            );
-          }
-
-          return result;
-        };
-
-        // 修正路由路径
-        const fixedRootRoute = fixRoutePaths(rootRoute);
-        console.log("修正路径后的根路由:", JSON.stringify(fixedRootRoute, null, 2));
-
-        // 转换为vue-router格式
-        const transformedRootRoute = transformRoutes([fixedRootRoute])[0];
-        console.log("转换后的根路由:", JSON.stringify(transformedRootRoute, null, 2));
-
-        // 保存路由信息
-        this.addRoutes = [transformedRootRoute];
-        this.routes = [...constantRoutes, transformedRootRoute];
-        this.menus = dedupedMenus;
-
-        // 动态添加路由
-        try {
-          router.addRoute(transformedRootRoute);
-          console.log("成功添加路由:", transformedRootRoute);
-        } catch (error) {
-          console.error("添加路由失败:", error);
-        }
-
-        return this.routes;
-      } catch (error) {
-        console.error("生成路由失败:", error);
-        return this.getDefaultRoutes();
+// 去重菜单项
+const deduplicateMenus = (menus: MenuItem[]): MenuItem[] => {
+  const seen = new Map<string, MenuItem>();
+  
+  const processMenu = (menu: MenuItem) => {
+    // 使用路径和名称的组合作为唯一键
+    const key = `${menu.path}:${menu.name || ''}`;
+    
+    if (!seen.has(key)) {
+      const processedMenu = { ...menu };
+      
+      // 如果有子菜单，递归处理
+      if (processedMenu.children && processedMenu.children.length > 0) {
+        processedMenu.children = deduplicateMenus(processedMenu.children);
+      } else if (processedMenu.children === null) {
+        // 将 null 转换为空数组
+        processedMenu.children = [];
       }
-    },
+      
+      seen.set(key, processedMenu);
+    }
+  };
 
-    // 重置路由
-    resetRoutes() {
-      this.routes = [];
-      this.addRoutes = [];
-      this.menus = [];
-    },
+  // 处理所有菜单项
+  menus.forEach(processMenu);
+  
+  // 返回去重后的菜单数组
+  const uniqueMenus = Array.from(seen.values());
+  
+  // 对菜单进行排序，确保顺序一致
+  return uniqueMenus.sort((a, b) => {
+    // 首页始终排在最前面
+    if (a.path === '/dashboard') return -1;
+    if (b.path === '/dashboard') return 1;
+    // 其他菜单按名称排序
+    return (a.name || '').localeCompare(b.name || '');
+  });
+};
 
-    // 添加一个新的方法来获取默认路由
-    getDefaultRoutes(): RouteRecordRaw[] {
-      const baseRoute: RouteRecordRaw = {
-        path: "/",
-        component: () => import("@/layouts/default/index.vue"),
-        redirect: "/dashboard",
-        children: [
-          {
-            path: "dashboard",
-            name: "Dashboard",
-            component: () => import("@/views/dashboard/index.vue"),
-            meta: {
-              title: "Dashboard",
-              icon: "dashboard",
-            },
-          },
-        ],
-      };
-      return [baseRoute];
-    },
-  },
+export const usePermissionStore = defineStore("permission", () => {
+  const routes = ref<RouteRecordRaw[]>([]);
+  const menus = ref<MenuItem[]>([]);
+
+  // 获取侧边栏菜单
+  const sidebarMenus = computed(() => {
+    const findLayoutRoute = (routes: MenuItem[]): MenuItem[] => {
+      for (const route of routes) {
+        if (route.name === "Layout" && route.children) {
+          // 移除 hidden 过滤条件，直接返回所有子菜单
+          return route.children;
+        }
+      }
+      return [];
+    };
+    return findLayoutRoute(menus.value);
+  });
+
+  // 生成路由
+  const generateRoutes = async () => {
+    try {
+      console.log('开始获取菜单数据')
+      const apiResponse = await getUserMenus()
+      const response = apiResponse as unknown as MenuApiResponse
+      console.log('菜单响应:', response)
+
+      if (!response || !response.menus) {
+        throw new Error('获取菜单失败：响应数据为空')
+      }
+
+      if (!Array.isArray(response.menus)) {
+        throw new Error('无效的菜单数据')
+      }
+
+      // 去重处理
+      const uniqueMenus = deduplicateMenus(response.menus)
+      console.log('去重后的菜单:', uniqueMenus)
+
+      // 确保只保留一个根路由
+      const rootMenu = uniqueMenus.find(menu => menu.path === '/')
+      if (!rootMenu) {
+        throw new Error('找不到根路由')
+      }
+
+      // 修正路由路径
+      const fixedMenus = [fixRoutePaths(rootMenu)]
+      console.log('修正后的菜单:', fixedMenus)
+      
+      // 转换为vue-router格式
+      const asyncRoutes = transformRoutes(fixedMenus)
+      console.log('生成的路由配置:', asyncRoutes)
+      
+      // 保存路由和菜单信息
+      routes.value = [...constantRoutes]
+      menus.value = fixedMenus
+
+      // 清除现有的动态路由
+      router.getRoutes().forEach(route => {
+        if (route.name && !constantRoutes.find(r => r.name === route.name)) {
+          router.removeRoute(route.name)
+        }
+      })
+
+      // 动态添加路由
+      asyncRoutes.forEach(route => {
+        if (!router.hasRoute(route.name as string)) {
+          router.addRoute(route)
+        }
+      })
+
+      console.log('路由生成完成')
+      return routes.value
+    } catch (error) {
+      console.error('生成路由失败:', error)
+      if (error instanceof Error) {
+        console.error('错误信息:', error.message)
+        console.error('错误堆栈:', error.stack)
+      }
+      throw error
+    }
+  }
+
+  // 重置路由
+  const resetRoutes = () => {
+    routes.value = [];
+    menus.value = [];
+  };
+
+  return {
+    routes,
+    menus,
+    sidebarMenus,
+    generateRoutes,
+    resetRoutes
+  };
 });

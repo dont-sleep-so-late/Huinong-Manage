@@ -1,11 +1,7 @@
-import axios, {
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type AxiosResponse,
-  type InternalAxiosRequestConfig,
-} from "axios";
-import { message } from "ant-design-vue";
-import { useUserStore } from "@/store";
+import axios from 'axios'
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import { message } from 'ant-design-vue'
+import { useUserStore } from '@/store/modules/user'
 
 // API响应数据接口
 interface ApiResponse<T = any> {
@@ -15,13 +11,13 @@ interface ApiResponse<T = any> {
 }
 
 // 创建axios实例
-const http: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api", // 从环境变量获取API地址
-  timeout: 10000, // 请求超时时间
+const http = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  timeout: 10000,
   headers: {
-    "Content-Type": "application/json;charset=utf-8",
-  },
-});
+    'Content-Type': 'application/json'
+  }
+})
 
 // 请求队列和取消令牌存储
 interface PendingRequest {
@@ -44,7 +40,7 @@ const removePendingRequest = (config: AxiosRequestConfig): void => {
 
 // 请求拦截器
 http.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config) => {
     // 取消重复请求
     removePendingRequest(config);
 
@@ -57,34 +53,51 @@ http.interceptors.request.use(
       });
     });
 
-    const userStore = useUserStore();
-    const token = userStore.token;
+    const userStore = useUserStore()
+    const token = userStore.token
     if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return config;
+    return config
   },
   (error) => {
-    return Promise.reject(error);
+    console.error('请求错误:', error)
+    return Promise.reject(error)
   }
-);
+)
 
 // 响应拦截器
 http.interceptors.response.use(
-  <T>(response: AxiosResponse<ApiResponse<T>>): Promise<T> => {
+  (response) => {
     // 从队列中移除已完成的请求
     removePendingRequest(response.config);
 
-    const { code, message: msg, data } = response.data;
-    // 根据自定义错误码判断请求是否成功
-    if (code === 200) {
-      // 只返回数据部分
-      return Promise.resolve(data);
+    const { code, message: msg, data } = response.data
+    
+    // 如果是文件下载，直接返回
+    if (response.headers['content-type']?.includes('application/octet-stream')) {
+      return response
     }
-    // 处理业务错误
-    message.error(msg || "操作失败");
-    return Promise.reject(new Error(msg || "操作失败"));
+
+    // 如果没有code，说明是直接返回数据
+    if (code === undefined) {
+      return response.data
+    }
+
+    // 处理业务状态码
+    switch (code) {
+      case 200:
+        return data
+      case 401:
+        // token过期或未登录
+        message.error('登录已过期，请重新登录')
+        const userStore = useUserStore()
+        userStore.logout()
+        return Promise.reject(new Error('登录已过期'))
+      default:
+        message.error(msg || '操作失败')
+        return Promise.reject(new Error(msg || '操作失败'))
+    }
   },
   (error) => {
     // 从队列中移除已完成的请求
@@ -97,21 +110,11 @@ http.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const { response } = error;
-    if (response && response.data) {
-      const { code, message: msg } = response.data;
-      message.error(msg || "操作失败");
-      // 处理401错误
-      if (code === 401) {
-        const userStore = useUserStore();
-        userStore.logout();
-      }
-    } else {
-      message.error("网络错误，请稍后重试");
-    }
-    return Promise.reject(error);
+    console.error('响应错误:', error)
+    message.error(error.message || '网络错误')
+    return Promise.reject(error)
   }
-);
+)
 
 // 请求重试机制
 const retryRequest = async <T>(
@@ -184,4 +187,4 @@ export const request = {
   },
 };
 
-export { http };
+export default http

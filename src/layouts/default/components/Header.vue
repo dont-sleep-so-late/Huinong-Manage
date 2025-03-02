@@ -32,21 +32,21 @@
       <a-dropdown>
         <div class="user-info">
           <a-avatar :src="userStore.userInfo?.avatar" />
-          <span class="username">{{ userStore.userInfo?.nickname }}</span>
+          <span class="username">{{ userStore.userInfo?.nickname || userStore.userInfo?.username }}</span>
         </div>
         <template #overlay>
           <a-menu>
             <a-menu-item key="profile">
-              <user-outlined />
+              <UserOutlined />
               个人中心
             </a-menu-item>
             <a-menu-item key="settings">
-              <setting-outlined />
+              <SettingOutlined />
               系统设置
             </a-menu-item>
             <a-menu-divider />
             <a-menu-item key="logout" @click="handleLogout">
-              <logout-outlined />
+              <LogoutOutlined />
               退出登录
             </a-menu-item>
           </a-menu>

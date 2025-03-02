@@ -1,8 +1,12 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import { login as userLogin, logout as userLogout, getUserInfo as fetchUserInfo, getUserMenus } from '@/api/auth'
-import type { LoginParams, UserInfo } from '@/api/auth'
+import type { LoginParams, LoginResponse, UserInfoResponse } from '@/api/auth'
 import { usePermissionStore } from '@/store/modules/permission'
 import router from '@/router'
+
+const TOKEN = 'token'
+const USER_INFO_KEY = 'user_info'
 
 // API响应接口
 interface ApiResponse<T = any> {
@@ -17,7 +21,7 @@ interface LoginResponseData {
   username: string
   role: string
   token: string
-  userInfo: UserInfo
+  userInfo: UserInfoResponse
 }
 
 // 用户状态接口
@@ -26,127 +30,83 @@ interface UserState {
   username: string
   role: string
   token: string
-  userInfo: UserInfo | null
+  userInfo: UserInfoResponse | null
 }
 
-export const useUserStore = defineStore('user', {
-  state: (): UserState => ({
-    userId: null,
-    username: '',
-    role: '',
-    token: '',
-    userInfo: null
-  }),
-  
-  getters: {
-    isLoggedIn: (state) => !!state.token,
-    currentUser: (state) => state.userInfo,
-    currentRole: (state) => state.role
-  },
-  
-  actions: {
-    // 设置用户信息
-    setUserInfo(data: LoginResponseData) {
-      this.userId = data.userId
-      this.username = data.username
-      this.role = data.role
-      this.token = data.token
-      this.userInfo = data.userInfo
+export const useUserStore = defineStore('user', () => {
+  // 从 localStorage 获取初始值
+  const token = ref<string>('')
+  const userInfo = ref<UserInfoResponse | null>(null)
+  const role = ref<string>('')
 
-      // 存储 token 到 localStorage
-      localStorage.setItem('token', data.token)
-    },
-    
-    // 登录
-    async login(loginParams: LoginParams) {
-      try {
-        // 1. 登录获取用户信息
-        const response = await userLogin(loginParams)
-        this.setUserInfo(response)
-        
-        // 2. 获取用户菜单
-        const permissionStore = usePermissionStore()
-        const accessRoutes = await permissionStore.generateRoutesFromRole(this.role)
-        
-        // 3. 动态添加路由
-        accessRoutes.forEach(route => {
-          router.addRoute(route)
-        })
+  // 登录
+  const login = async (loginParams: LoginParams) => {
+    try {
+      console.log('开始登录，参数:', loginParams)
+      const response = await userLogin(loginParams)
+      console.log('登录响应:', response)
 
-        // 4. 跳转到首页或者重定向页面
-        const redirect = router.currentRoute.value.query.redirect as string
-        router.push(redirect || '/')
-        
-        return response
-      } catch (error) {
-        // 清空用户信息
-        this.clearUserInfo()
-        throw error
+      if (!response) {
+        throw new Error('登录失败：响应数据为空')
       }
-    },
-    
-    // 登出
-    async logout() {
-      try {
-        await userLogout()
-      } finally {
-        this.clearUserInfo()
-        // 重置路由
-        location.reload()
+
+      // 保存 token 和用户信息
+      token.value = response.token
+      userInfo.value = response.userInfo
+      role.value = response.role
+
+      // 保存到 localStorage
+      localStorage.setItem(TOKEN, response.token)
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(response.userInfo))
+
+      console.log('登录成功，用户信息已保存')
+      return response
+    } catch (error) {
+      console.error('登录失败:', error)
+      if (error instanceof Error) {
+        console.error('错误信息:', error.message)
+        console.error('错误堆栈:', error.stack)
       }
-    },
-    
-    // 清空用户信息
-    clearUserInfo() {
-      this.userId = null
-      this.username = ''
-      this.role = ''
-      this.token = ''
-      this.userInfo = null
-      localStorage.removeItem('token')
-    },
-    
-    // 从 localStorage 恢复用户会话
-    async restoreSession() {
-      const token = localStorage.getItem('token')
-      if (token) {
-        this.token = token
-        try {
-          // 获取用户信息
-          const userInfo = await this.getUserInfo()
-          
-          // 获取用户菜单
-          const permissionStore = usePermissionStore()
-          const accessRoutes = await permissionStore.generateRoutesFromRole(this.role)
-          
-          // 动态添加路由
-          accessRoutes.forEach(route => {
-            router.addRoute(route)
-          })
-          
-          return userInfo
-        } catch (error) {
-          this.clearUserInfo()
-          throw error
-        }
-      }
-    },
-    
-    // 获取用户信息
-    async getUserInfo() {
-      try {
-        const response = await fetchUserInfo()
-        this.setUserInfo(response)
-        return response
-      } catch (error) {
-        console.error('获取用户信息失败:', error)
-        throw error
-      }
-    },
-    
-    // 检查用户是否有指定角色
-    hasRole(roleToCheck: string): boolean {
-      return this.userInfo?.role === roleToCheck
+      throw error
     }
+  }
+
+  // 获取用户信息
+  const getUserInfo = async () => {
+    try {
+      const response = await fetchUserInfo()
+      const { data } = response as ApiResponse<UserInfoResponse>
+      userInfo.value = data
+      // 更新 localStorage
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
+      return { userInfo: data }
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      throw error
+    }
+  }
+
+  // 登出
+  const logout = async () => {
+    try {
+      await userLogout()
+    } finally {
+      token.value = ''
+      userInfo.value = null
+      // 清除 localStorage
+      localStorage.removeItem(TOKEN)
+      localStorage.removeItem(USER_INFO_KEY)
+      // 重置路由
+      router.push('/login')
+    }
+  }
+
+  return {
+    token,
+    userInfo,
+    role,
+    login,
+    getUserInfo,
+    logout
   }
 }) 

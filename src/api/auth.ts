@@ -1,4 +1,4 @@
-import { request } from '@/utils/http'
+import http from '@/utils/http'
 
 // 登录方式
 export type LoginType = 'phone' | 'email' | 'sms'
@@ -11,10 +11,8 @@ export type CodeType = 'login' | 'register' | 'reset'
 
 // 登录参数接口
 export interface LoginParams {
-  account: string  // 账号（手机号或邮箱）
-  password?: string  // 密码（密码登录时必填）
-  code?: string    // 验证码（验证码登录时必填）
-  loginType: LoginType  // 登录方式
+  mobile: string
+  password: string
 }
 
 // 注册参数接口
@@ -53,7 +51,17 @@ export interface LoginResponse {
   username: string
   role: string
   token: string
-  userInfo: UserInfo
+  userInfo: {
+    id: number
+    username: string
+    nickname: string | null
+    phone: string | null
+    email: string | null
+    avatar: string | null
+    role: string
+    createTime: string | null
+    verified: boolean
+  }
 }
 
 // 注册响应接口
@@ -64,30 +72,48 @@ export interface RegisterResult {
   userInfo: UserInfo     // 用户信息
 }
 
-// 菜单项接口
-export interface MenuItem {
-  path: string
-  component: string
-  name: string
-  redirect?: {
-    path: string
-  }
-  meta: {
-    title: string
-    icon?: string
-    roles?: string[]
-    hidden?: boolean
-  }
-  children?: MenuItem[]
+// 用户信息响应接口
+export interface UserInfoResponse {
+  id: number
+  username: string
+  nickname: string | null
+  phone: string | null
+  email: string | null
+  avatar: string | null
+  role: string
+  createTime: string | null
+  verified: boolean
 }
 
-/**
- * 登录API
- * @param params 登录参数
- * @returns Promise<LoginResponse>
- */
-export function login(params: LoginParams) {
-  return request.post<LoginResponse>('/auth/login', params)
+// 菜单项接口
+export interface MenuItem {
+  path: string;
+  component?: string;
+  name?: string;
+  redirect?: string | { path: string };
+  meta?: {
+    title?: string;
+    icon?: string;
+    roles?: string[];
+    hidden?: boolean;
+    [key: string]: any;
+  };
+  children?: MenuItem[];
+}
+
+export interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+}
+
+export interface MenuResponse {
+  menus: MenuItem[];
+}
+
+// 登录
+export const login = (params: LoginParams): Promise<LoginResponse> => {
+  return http.post('/auth/login', params)
 }
 
 /**
@@ -96,7 +122,7 @@ export function login(params: LoginParams) {
  * @returns Promise<RegisterResult>
  */
 export function register(params: RegisterParams) {
-  return request.post<RegisterResult>('/auth/register', params)
+  return http.post<RegisterResult>('/auth/register', params)
 }
 
 /**
@@ -105,7 +131,7 @@ export function register(params: RegisterParams) {
  * @returns Promise<void>
  */
 export function sendCode(params: SendSmsParams) {
-  return request.post<void>('/auth/send-code', params)
+  return http.post<void>('/auth/send-code', params)
 }
 
 /**
@@ -116,23 +142,17 @@ export function sendCode(params: SendSmsParams) {
  * @returns Promise<boolean>
  */
 export function verifyCode(account: string, code: string, type: CodeType) {
-  return request.post<boolean>('/auth/verify-code', { account, code, type })
+  return http.post<boolean>('/auth/verify-code', { account, code, type })
 }
 
-/**
- * 登出API
- * @returns Promise<void>
- */
-export function logout() {
-  return request.post<void>('/auth/logout')
+// 登出
+export const logout = () => {
+  return http.post('/auth/logout')
 }
 
-/**
- * 获取用户信息
- * @returns Promise<LoginResponse>
- */
-export function getUserInfo() {
-  return request.get<LoginResponse>('/auth/info')
+// 获取用户信息
+export const getUserInfo = (): Promise<ApiResponse<UserInfoResponse>> => {
+  return http.get('/auth/user-info')
 }
 
 /**
@@ -141,7 +161,7 @@ export function getUserInfo() {
  * @returns Promise<{ token: string, expires: number }>
  */
 export function refreshToken(refreshToken: string) {
-  return request.post<{ token: string, expires: number }>('/auth/refresh-token', { refreshToken })
+  return http.post<{ token: string, expires: number }>('/auth/refresh-token', { refreshToken })
 }
 
 /**
@@ -156,7 +176,7 @@ export interface ChangePasswordParams {
 }
 
 export function changePassword(params: ChangePasswordParams) {
-  return request.post<void>('/auth/change-password', params)
+  return http.post<void>('/auth/change-password', params)
 }
 
 /**
@@ -172,7 +192,7 @@ export interface ResetPasswordParams {
 }
 
 export function resetPassword(params: ResetPasswordParams) {
-  return request.post<void>('/auth/reset-password', params)
+  return http.post<void>('/auth/reset-password', params)
 }
 
 /**
@@ -180,13 +200,13 @@ export function resetPassword(params: ResetPasswordParams) {
  * @returns Promise<string[]>
  */
 export function getUserPermissions() {
-  return request.get<string[]>('/auth/permissions')
+  return http.get<string[]>('/auth/permissions')
 }
 
 /**
  * 获取用户菜单
- * @returns Promise<MenuItem[]>
+ * @returns Promise<ApiResponse<MenuResponse>>
  */
-export function getUserMenus() {
-  return request.get<MenuItem[]>('/auth/menus')
+export const getUserMenus = (): Promise<ApiResponse<MenuResponse>> => {
+  return http.get('/auth/menus')
 } 
