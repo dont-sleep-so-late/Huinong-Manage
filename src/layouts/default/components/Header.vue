@@ -36,7 +36,7 @@
         </div>
         <template #overlay>
           <a-menu>
-            <a-menu-item key="profile">
+            <a-menu-item key="profile" @click="handleProfile">
               <UserOutlined />
               个人中心
             </a-menu-item>
@@ -122,6 +122,11 @@ const handleLogout = async () => {
   } catch (error) {
     message.error('退出失败')
   }
+}
+
+// 个人中心
+const handleProfile = () => {
+  router.push('/profile')
 }
 </script>
 

@@ -72,32 +72,45 @@ http.interceptors.response.use(
     // 从队列中移除已完成的请求
     removePendingRequest(response.config);
 
-    const { code, message: msg, data } = response.data
-    
     // 如果是文件下载，直接返回
     if (response.headers['content-type']?.includes('application/octet-stream')) {
       return response
     }
 
-    // 如果没有code，说明是直接返回数据
-    if (code === undefined) {
-      return response.data
+    const responseData = response.data
+
+    // 如果直接返回数组，说明是列表数据
+    if (Array.isArray(responseData)) {
+      return responseData
     }
 
-    // 处理业务状态码
-    switch (code) {
-      case 200:
-        return data
-      case 401:
-        // token过期或未登录
-        message.error('登录已过期，请重新登录')
-        const userStore = useUserStore()
-        userStore.logout()
-        return Promise.reject(new Error('登录已过期'))
-      default:
-        message.error(msg || '操作失败')
-        return Promise.reject(new Error(msg || '操作失败'))
+    // 如果是对象，检查是否包含 code 字段
+    if (typeof responseData === 'object' && responseData !== null) {
+      const { code, message: msg, data } = responseData
+
+      // 如果没有code，说明是直接返回数据
+      if (code === undefined) {
+        return responseData
+      }
+
+      // 处理业务状态码
+      switch (code) {
+        case 200:
+          return data
+        case 401:
+          // token过期或未登录
+          message.error('登录已过期，请重新登录')
+          const userStore = useUserStore()
+          userStore.logout()
+          return Promise.reject(new Error('登录已过期'))
+        default:
+          message.error(msg || '操作失败')
+          return Promise.reject(new Error(msg || '操作失败'))
+      }
     }
+
+    // 其他情况直接返回响应数据
+    return responseData
   },
   (error) => {
     // 从队列中移除已完成的请求

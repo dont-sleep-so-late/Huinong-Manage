@@ -16,53 +16,48 @@
         :loading="loading"
         :pagination="false"
       >
-        <!-- 图标 -->
-        <template #icon="{ text }">
-          <component :is="text" />
-        </template>
-
-        <!-- 菜单类型 -->
-        <template #type="{ text }">
-          <a-tag :color="getTypeColor(text)">
-            {{ getTypeText(text) }}
-          </a-tag>
-        </template>
-
-        <!-- 状态 -->
-        <template #status="{ text }">
-          <a-tag :color="text === 1 ? 'success' : 'error'">
-            {{ text === 1 ? '显示' : '隐藏' }}
-          </a-tag>
-        </template>
-
-        <!-- 操作 -->
-        <template #action="{ record }">
-          <a-space>
-            <a @click="handleAdd(record)">新增</a>
-            <a-divider type="vertical" />
-            <a @click="handleEdit(record)">编辑</a>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              :title="record.status === 1 ? '确定要隐藏该菜单吗？' : '确定要显示该菜单吗？'"
-              @confirm="handleToggleStatus(record)"
-            >
-              <a>{{ record.status === 1 ? '隐藏' : '显示' }}</a>
-            </a-popconfirm>
-            <a-divider type="vertical" />
-            <a-popconfirm
-              title="确定要删除该菜单吗？"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-danger">删除</a>
-            </a-popconfirm>
-          </a-space>
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'icon'">
+            <component :is="isValidIcon(text) ? icons[text] : null" />
+          </template>
+          <template v-else-if="column.key === 'type'">
+            <a-tag :color="getTypeColor(text)">
+              {{ getTypeText(text) }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="Number(text) === 1 ? 'success' : 'error'">
+              {{ Number(text) === 1 ? '显示' : '隐藏' }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <a @click="() => handleAdd(record)">新增</a>
+              <a-divider type="vertical" />
+              <a @click="() => handleEdit(record)">编辑</a>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                :title="record.status === 1 ? '确定要隐藏该菜单吗？' : '确定要显示该菜单吗？'"
+                @confirm="() => handleToggleStatus(record)"
+              >
+                <a>{{ record.status === 1 ? '隐藏' : '显示' }}</a>
+              </a-popconfirm>
+              <a-divider type="vertical" />
+              <a-popconfirm
+                title="确定要删除该菜单吗？"
+                @confirm="() => handleDelete(record)"
+              >
+                <a class="text-danger">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -84,65 +79,66 @@
             :tree-data="menuTree"
             placeholder="请选择上级菜单"
             :field-names="{
-              label: 'title',
-              value: 'key',
-              children: 'children'
+              label: 'name',
+              value: 'id'
             }"
             :disabled="!!formData.id"
             tree-default-expand-all
             allow-clear
           />
         </a-form-item>
-        <a-form-item label="菜单类型" name="type">
-          <a-radio-group v-model:value="formData.type">
-            <a-radio :value="1">目录</a-radio>
-            <a-radio :value="2">菜单</a-radio>
-            <a-radio :value="3">按钮</a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="菜单名称" name="title">
+        <a-form-item label="菜单名称" name="name">
           <a-input
-            v-model:value="formData.title"
+            v-model:value="formData.name"
             placeholder="请输入菜单名称"
           />
         </a-form-item>
-        <template v-if="formData.type !== 3">
-          <a-form-item label="图标" name="icon">
-            <a-select
-              v-model:value="formData.icon"
-              placeholder="请选择图标"
-              style="width: 100%"
-            >
-              <a-select-option value="HomeOutlined">首页图标</a-select-option>
-              <a-select-option value="ShoppingOutlined">购物图标</a-select-option>
-              <a-select-option value="OrderedListOutlined">订单图标</a-select-option>
-              <a-select-option value="UserOutlined">用户图标</a-select-option>
-              <a-select-option value="TeamOutlined">团队图标</a-select-option>
-              <a-select-option value="SettingOutlined">设置图标</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="路由地址" name="path">
-            <a-input
-              v-model:value="formData.path"
-              placeholder="请输入路由地址"
-            />
-          </a-form-item>
-          <a-form-item label="组件路径" name="component">
-            <a-input
-              v-model:value="formData.component"
-              placeholder="请输入组件路径"
-            />
-          </a-form-item>
-        </template>
-        <a-form-item label="权限标识" name="permission" v-if="formData.type === 3">
+        <a-form-item label="权限编码" name="code">
           <a-input
-            v-model:value="formData.permission"
-            placeholder="请输入权限标识"
+            v-model:value="formData.code"
+            placeholder="请输入权限编码"
           />
         </a-form-item>
-        <a-form-item label="排序" name="sort">
+        <a-form-item label="权限类型" name="type">
+          <a-select
+            v-model:value="formData.type"
+            placeholder="请选择权限类型"
+            style="width: 100%"
+            :options="typeOptions"
+            @change="handleTypeChange"
+          />
+        </a-form-item>
+        <a-form-item label="图标" name="icon">
+          <a-select
+            v-model:value="formData.icon"
+            placeholder="请选择图标"
+            style="width: 100%"
+            allow-clear
+            @change="handleIconChange"
+          >
+            <a-select-option v-for="option in iconOptions" :key="option.value" :value="option.value">
+              <span>
+                <component :is="isValidIcon(option.value) ? icons[option.value] : null" />
+                <span style="margin-left: 8px">{{ option.label }}</span>
+              </span>
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="路由地址" name="path">
+          <a-input
+            v-model:value="formData.path"
+            placeholder="请输入路由地址"
+          />
+        </a-form-item>
+        <a-form-item label="组件路径" name="component">
+          <a-input
+            v-model:value="formData.component"
+            placeholder="请输入组件路径"
+          />
+        </a-form-item>
+        <a-form-item label="排序" name="sortOrder">
           <a-input-number
-            v-model:value="formData.sort"
+            v-model:value="formData.sortOrder"
             :min="0"
             style="width: 100%"
             placeholder="请输入排序号"
@@ -160,7 +156,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, h } from 'vue'
+import type { TableColumnsType, FormInstance } from 'ant-design-vue'
+import type { Rule } from 'ant-design-vue/es/form'
+import type { DefaultOptionType } from 'ant-design-vue/es/select'
+import type { SelectProps } from 'ant-design-vue/es/select'
 import {
   PlusOutlined,
   HomeOutlined,
@@ -172,39 +172,148 @@ import {
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import type { DataNode } from 'ant-design-vue/es/tree'
+import {
+  getPermissionTree,
+  createPermission,
+  updatePermission,
+  deletePermission,
+  updatePermissionStatus,
+  type PermissionItem,
+  type PermissionType
+} from '@/api/permission'
+
+// 图标映射
+const icons = {
+  HomeOutlined,
+  ShoppingOutlined,
+  OrderedListOutlined,
+  UserOutlined,
+  TeamOutlined,
+  SettingOutlined
+} as const
+
+// 类型定义
+type PermissionType = 'menu' | 'button' | 'data'
+type IconType = keyof typeof icons
+
+// 图标选项
+const iconOptions = (Object.keys(icons) as IconType[]).map(key => ({
+  label: key,
+  value: key
+}))
+
+// 权限类型选项
+const typeOptions = [
+  { label: '菜单', value: 'menu' as const },
+  { label: '按钮', value: 'button' as const },
+  { label: '数据', value: 'data' as const }
+]
 
 interface MenuItem {
   id: number
-  parentId?: number
-  type: number
-  title: string
-  icon?: string
-  path?: string
-  component?: string
-  permission?: string
-  sort: number
-  status: number
+  parentId: number | null
+  name: string
+  code: string
+  type: PermissionType
+  icon: IconType | null
+  path: string
+  component: string
+  sortOrder: number
+  status: 0 | 1
   children?: MenuItem[]
 }
 
+interface FormState {
+  id?: number
+  parentId: number | null
+  name: string
+  code: string
+  type: PermissionType
+  icon: IconType | null
+  path: string
+  component: string
+  sortOrder: number
+  status: 0 | 1
+}
+
+// 表单初始值
+const initialFormState: FormState = {
+  parentId: null,
+  name: '',
+  code: '',
+  type: 'menu',
+  icon: null,
+  path: '',
+  component: '',
+  sortOrder: 0,
+  status: 1
+}
+
+// 新增/编辑弹窗
+const modalVisible = ref(false)
+const modalTitle = ref('新增菜单')
+const formRef = ref<FormInstance>()
+const formData = reactive<FormState>({...initialFormState})
+
+// 表单验证规则
+const formRules: Record<keyof FormState, Rule[]> = {
+  id: [],
+  parentId: [
+    { required: false, message: '请选择上级菜单' }
+  ],
+  name: [
+    { required: true, message: '请输入菜单名称' }
+  ],
+  code: [
+    { required: true, message: '请输入权限编码' }
+  ],
+  type: [
+    { required: true, message: '请选择权限类型' }
+  ],
+  path: [
+    { required: true, message: '请输入路由地址' }
+  ],
+  component: [
+    { required: false, message: '请输入组件路径' }
+  ],
+  icon: [
+    { required: false }
+  ],
+  sortOrder: [
+    { required: true, message: '请输入排序号', type: 'number' }
+  ],
+  status: [
+    { required: true, message: '请选择状态', type: 'number' }
+  ]
+}
+
 // 表格列定义
-const columns = [
+const columns: TableColumnsType<MenuItem> = [
   {
     title: '菜单名称',
-    dataIndex: 'title',
-    key: 'title'
+    dataIndex: 'name',
+    key: 'name'
   },
   {
     title: '图标',
     dataIndex: 'icon',
     key: 'icon',
-    slots: { customRender: 'icon' }
+    customRender: ({ text }) => {
+      return isValidIcon(text) ? h(icons[text]) : null
+    }
   },
   {
-    title: '类型',
+    title: '权限类型',
     dataIndex: 'type',
     key: 'type',
-    slots: { customRender: 'type' }
+    customRender: ({ text }) => {
+      return h('a-tag', { color: getTypeColor(text) }, () => getTypeText(text))
+    }
+  },
+  {
+    title: '权限编码',
+    dataIndex: 'code',
+    key: 'code'
   },
   {
     title: '路由地址',
@@ -212,25 +321,50 @@ const columns = [
     key: 'path'
   },
   {
-    title: '权限标识',
-    dataIndex: 'permission',
-    key: 'permission'
+    title: '组件',
+    dataIndex: 'component',
+    key: 'component'
   },
   {
     title: '排序',
-    dataIndex: 'sort',
-    key: 'sort'
+    dataIndex: 'sortOrder',
+    key: 'sortOrder'
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
-    slots: { customRender: 'status' }
+    customRender: ({ text }) => {
+      const status = Number(text)
+      return h('a-tag', { color: status === 1 ? 'success' : 'error' }, () => status === 1 ? '显示' : '隐藏')
+    }
   },
   {
     title: '操作',
     key: 'action',
-    slots: { customRender: 'action' }
+    width: 200,
+    customRender: ({ record }) => {
+      if (!isMenuItem(record)) return null
+      return h('a-space', {}, [
+        h('a', { onClick: () => handleAdd(record) }, '新增'),
+        h('a-divider', { type: 'vertical' }),
+        h('a', { onClick: () => handleEdit(record) }, '编辑'),
+        h('a-divider', { type: 'vertical' }),
+        h('a-popconfirm', {
+          title: record.status === 1 ? '确定要隐藏该菜单吗？' : '确定要显示该菜单吗？',
+          onConfirm: () => handleToggleStatus(record)
+        }, {
+          default: () => h('a', {}, record.status === 1 ? '隐藏' : '显示')
+        }),
+        h('a-divider', { type: 'vertical' }),
+        h('a-popconfirm', {
+          title: '确定要删除该菜单吗？',
+          onConfirm: () => handleDelete(record)
+        }, {
+          default: () => h('a', { class: 'text-danger' }, '删除')
+        })
+      ])
+    }
   }
 ]
 
@@ -239,210 +373,157 @@ const loading = ref(false)
 const tableData = ref<MenuItem[]>([])
 
 // 菜单树数据
-const menuTree = ref<DataNode[]>([])
+const menuTree = ref<MenuItem[]>([])
 
-// 新增/编辑弹窗
-const modalVisible = ref(false)
-const modalTitle = ref('新增菜单')
-const formRef = ref()
-const formData = reactive<Partial<MenuItem>>({
-  type: 1,
-  title: '',
-  icon: undefined,
-  path: '',
-  component: '',
-  permission: '',
-  sort: 0,
-  status: 1
-})
-
-// 表单验证规则
-const formRules = {
-  parentId: [
-    { required: true, message: '请选择上级菜单' }
-  ],
-  type: [
-    { required: true, message: '请选择菜单类型' }
-  ],
-  title: [
-    { required: true, message: '请输入菜单名称' }
-  ],
-  icon: [
-    { required: true, message: '请选择图标' }
-  ],
-  path: [
-    { required: true, message: '请输入路由地址' }
-  ],
-  component: [
-    { required: true, message: '请输入组件路径' }
-  ],
-  permission: [
-    { required: true, message: '请输入权限标识' }
-  ],
-  sort: [
-    { required: true, message: '请输入排序号' }
-  ]
+// 类型检查函数
+const isMenuItem = (value: unknown): value is MenuItem => {
+  return value !== null && typeof value === 'object' && 'id' in value && 'name' in value && 'type' in value
 }
 
-// 获取类型文本
-const getTypeText = (type: number) => {
-  switch (type) {
-    case 1:
-      return '目录'
-    case 2:
-      return '菜单'
-    case 3:
-      return '按钮'
-    default:
-      return '未知类型'
-  }
+const isValidIcon = (value: unknown): value is IconType => {
+  return typeof value === 'string' && value in icons
 }
 
-// 获取类型颜色
-const getTypeColor = (type: number) => {
+const isValidType = (value: unknown): value is PermissionType => {
+  return typeof value === 'string' && ['menu', 'button', 'data'].includes(value)
+}
+
+// 辅助函数
+const getTypeColor = (type: unknown) => {
+  if (!isValidType(type)) return 'default'
   switch (type) {
-    case 1:
+    case 'menu':
       return 'blue'
-    case 2:
+    case 'button':
       return 'green'
-    case 3:
-      return 'purple'
+    case 'data':
+      return 'orange'
     default:
-      return ''
+      return 'default'
   }
 }
 
-// 新增
-const handleAdd = (record?: MenuItem) => {
-  modalTitle.value = record ? '新增子菜单' : '新增菜单'
-  formData.id = undefined
-  formData.parentId = record ? record.id : undefined
-  formData.type = 1
-  formData.title = ''
-  formData.icon = undefined
-  formData.path = ''
-  formData.component = ''
-  formData.permission = ''
-  formData.sort = 0
-  formData.status = 1
+const getTypeText = (type: unknown) => {
+  if (!isValidType(type)) return '未知类型'
+  switch (type) {
+    case 'menu':
+      return '菜单'
+    case 'button':
+      return '按钮'
+    case 'data':
+      return '数据'
+    default:
+      return type
+  }
+}
+
+// 处理函数
+const handleAdd = (parent?: unknown) => {
+  Object.assign(formData, initialFormState)
+  if (isMenuItem(parent)) {
+    formData.parentId = parent.id
+    modalTitle.value = '新增子菜单'
+  } else {
+    formData.parentId = null
+    modalTitle.value = '新增菜单'
+  }
   modalVisible.value = true
 }
 
-// 编辑
-const handleEdit = (record: MenuItem) => {
-  modalTitle.value = '编辑菜单'
+const handleEdit = (record: unknown) => {
+  if (!isMenuItem(record)) return
   Object.assign(formData, record)
+  modalTitle.value = '编辑菜单'
   modalVisible.value = true
 }
 
-// 切换状态
-const handleToggleStatus = async (record: MenuItem) => {
+const handleToggleStatus = async (record: unknown) => {
+  if (!isMenuItem(record)) return
   try {
-    // TODO: 调用切换状态API
-    message.success(record.status === 1 ? '隐藏成功' : '显示成功')
+    await updatePermissionStatus(record.id, record.status === 1 ? 0 : 1)
+    message.success('操作成功')
     fetchData()
   } catch (error) {
+    console.error('切换状态失败:', error)
     message.error('操作失败')
   }
 }
 
-// 删除
-const handleDelete = async (record: MenuItem) => {
+const handleDelete = async (record: unknown) => {
+  if (!isMenuItem(record)) return
   try {
-    // TODO: 调用删除API
+    await deletePermission(record.id)
     message.success('删除成功')
     fetchData()
   } catch (error) {
+    console.error('删除失败:', error)
     message.error('删除失败')
   }
 }
 
-// 弹窗确认
-const handleModalOk = () => {
-  formRef.value?.validate().then(async () => {
-    try {
-      // TODO: 调用保存API
-      message.success('保存成功')
-      modalVisible.value = false
-      fetchData()
-    } catch (error) {
-      message.error('保存失败')
+const handleModalOk = async () => {
+  if (!formRef.value) return
+  try {
+    await formRef.value.validate()
+    const data = {
+      ...formData,
+      sortOrder: Number(formData.sortOrder)
     }
-  })
+    if (data.id) {
+      await updatePermission(data.id, data)
+      message.success('更新成功')
+    } else {
+      await createPermission(data)
+      message.success('创建成功')
+    }
+    modalVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('表单验证失败:', error)
+  }
 }
 
-// 弹窗取消
 const handleModalCancel = () => {
   modalVisible.value = false
   formRef.value?.resetFields()
 }
 
-// 转换菜单树数据
-const convertMenuTree = (menus: MenuItem[]): DataNode[] => {
-  return menus.map(menu => ({
-    title: menu.title,
-    key: menu.id,
-    children: menu.children ? convertMenuTree(menu.children) : undefined
-  }))
-}
-
-// 获取表格数据
+// 获取菜单数据
 const fetchData = async () => {
-  loading.value = true
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    const data = [
-      {
-        id: 1,
-        type: 1,
-        title: '系统管理',
-        icon: 'SettingOutlined',
-        path: '/system',
-        sort: 1,
-        status: 1,
-        children: [
-          {
-            id: 2,
-            parentId: 1,
-            type: 2,
-            title: '用户管理',
-            icon: 'UserOutlined',
-            path: '/system/user',
-            component: '/system/user/index',
-            sort: 1,
-            status: 1,
-            children: [
-              {
-                id: 3,
-                parentId: 2,
-                type: 3,
-                title: '查询用户',
-                permission: 'system:user:list',
-                sort: 1,
-                status: 1
-              },
-              {
-                id: 4,
-                parentId: 2,
-                type: 3,
-                title: '新增用户',
-                permission: 'system:user:add',
-                sort: 2,
-                status: 1
-              }
-            ]
-          }
-        ]
-      }
-    ]
-    tableData.value = data
-    menuTree.value = convertMenuTree(data)
+    loading.value = true
+    const res = await getPermissionTree()
+    if (Array.isArray(res)) {
+      const convertedData = res.map(item => ({
+        ...item,
+        type: item.type || 'menu',
+        icon: item.icon && isValidIcon(item.icon) ? item.icon : null,
+        status: item.status as 0 | 1
+      }))
+      tableData.value = convertedData
+      menuTree.value = convertedData
+    } else {
+      message.error('获取数据失败')
+    }
   } catch (error) {
+    console.error('获取菜单列表失败:', error)
     message.error('获取数据失败')
   } finally {
     loading.value = false
   }
+}
+
+// 表单相关类型
+type SelectValue = string | number | undefined
+
+const handleTypeChange = (value: string) => {
+  if (isValidType(value)) {
+    formData.type = value
+  }
+}
+
+const handleIconChange = (value: string | null) => {
+  formData.icon = value && isValidIcon(value) ? value : null
 }
 
 // 初始化
