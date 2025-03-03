@@ -265,7 +265,7 @@
 
     <!-- 规格弹窗 -->
     <a-modal
-      v-model:visible="specsVisible"
+      v-model:open="specsVisible"
       title="商品规格"
       width="600px"
       @ok="handleSpecsOk"

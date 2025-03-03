@@ -68,7 +68,7 @@
     
     <!-- 消息详情弹窗 -->
     <a-modal
-      v-model:visible="detailVisible"
+      v-model:open="detailVisible"
       title="消息详情"
       :footer="null"
       @ok="detailVisible = false"
@@ -86,7 +86,7 @@
     
     <!-- 删除确认弹窗 -->
     <a-modal
-      v-model:visible="deleteVisible"
+      v-model:open="deleteVisible"
       title="删除确认"
       :confirm-loading="confirmLoading"
       @ok="confirmDelete"

@@ -73,23 +73,59 @@ const renderIcon = (icon?: string) => {
 const selectedKeys = computed(() => [route.path])
 const openKeys = ref<string[]>([])
 
+// 获取菜单数据
+const menus = computed(() => {
+  const sidebarMenus = permissionStore.sidebarMenus
+  return sidebarMenus
+})
+
+// 获取所有可展开的菜单路径
+const getAllMenuPaths = (menuItems: MenuItem[]): string[] => {
+  let paths: string[] = []
+  menuItems.forEach(menu => {
+    if (menu.path) {
+      paths.push(menu.path)
+    }
+    if (menu.children && menu.children.length > 0) {
+      paths = [...paths, ...getAllMenuPaths(menu.children)]
+    }
+  })
+  return paths
+}
+
+// 初始化默认展开所有菜单
+const initOpenKeys = () => {
+  // 获取所有有子菜单的菜单路径
+  const allPaths = menus.value
+    .filter(menu => menu.children && menu.children.length > 0)
+    .map(menu => menu.path)
+  
+  openKeys.value = allPaths
+}
+
 // 监听路由变化
 watch(
   () => route.matched,
   (matched) => {
     // 更新展开的子菜单
     if (matched.length > 1) {
-      openKeys.value = matched.slice(0, -1).map(item => item.path)
+      // 保持当前路由的父菜单展开
+      const matchedPaths = matched.slice(0, -1).map(item => item.path)
+      // 合并已展开的菜单和当前路由的父菜单
+      openKeys.value = Array.from(new Set([...openKeys.value, ...matchedPaths]))
     }
   },
   { immediate: true }
 )
 
-// 获取菜单数据
-const menus = computed(() => {
-  const sidebarMenus = permissionStore.sidebarMenus
-  return sidebarMenus
-})
+// 监听菜单数据变化，初始化展开状态
+watch(
+  () => menus.value,
+  () => {
+    initOpenKeys()
+  },
+  { immediate: true }
+)
 
 // 处理子菜单展开/收起
 const handleOpenChange = (keys: Key[]) => {

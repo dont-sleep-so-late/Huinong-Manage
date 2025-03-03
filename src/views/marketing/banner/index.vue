@@ -96,7 +96,7 @@
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -160,7 +160,7 @@
 
     <!-- 查看详情弹窗 -->
     <a-modal
-      v-model:visible="detailVisible"
+      v-model:open="detailVisible"
       title="轮播图详情"
       @cancel="detailVisible = false"
     >

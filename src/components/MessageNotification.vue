@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
@@ -192,7 +192,7 @@ export default defineComponent({
 
     // 查看更多
     const handleViewMore = () => {
-      router.push('/message')
+      router.push('/system/message')
       visible.value = false
     }
 

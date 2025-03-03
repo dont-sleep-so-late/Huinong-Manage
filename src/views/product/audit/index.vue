@@ -129,7 +129,7 @@
 
     <!-- 查看详情弹窗 -->
     <a-modal
-      v-model:visible="detailVisible"
+      v-model:open="detailVisible"
       title="商品详情"
       width="800px"
       @cancel="detailVisible = false"
@@ -189,7 +189,7 @@
 
     <!-- 审核弹窗 -->
     <a-modal
-      v-model:visible="auditVisible"
+      v-model:open="auditVisible"
       :title="isMultiple ? '批量审核' : '商品审核'"
       @ok="handleAuditSubmit"
       @cancel="handleAuditCancel"

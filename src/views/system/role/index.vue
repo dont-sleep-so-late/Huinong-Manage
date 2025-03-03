@@ -92,7 +92,7 @@
 
     <!-- 新增/编辑弹窗 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -135,7 +135,7 @@
 
     <!-- 权限设置弹窗 -->
     <a-modal
-      v-model:visible="permissionVisible"
+      v-model:open="permissionVisible"
       title="权限设置"
       @ok="handlePermissionOk"
       @cancel="handlePermissionCancel"
