@@ -158,7 +158,7 @@
       >
         <a-form-item label="商品分类" name="categoryId">
           <a-cascader
-            v-model:value="formData.categoryId"
+            v-model="formData.categoryId"
             :options="categoryOptions"
             placeholder="请选择商品分类"
             :field-names="{
