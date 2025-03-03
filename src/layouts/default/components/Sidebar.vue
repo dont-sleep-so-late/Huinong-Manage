@@ -119,7 +119,6 @@ watch(
 // 获取菜单数据
 const menus = computed(() => {
   const sidebarMenus = permissionStore.sidebarMenus
-  console.log('侧边栏菜单:', sidebarMenus)
   return sidebarMenus
 })
 
@@ -130,7 +129,6 @@ const handleOpenChange = (keys: Key[]) => {
 
 // 菜单点击
 const handleMenuClick = (path: string) => {
-  console.log('点击菜单:', path)
   try {
     router.push(path)
   } catch (error) {

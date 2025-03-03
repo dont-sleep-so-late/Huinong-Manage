@@ -37,22 +37,13 @@
         <a-row :gutter="16">
           <a-col :span="24">
             <a-form-item label="头像" name="avatar">
-              <a-upload
-                v-model:file-list="fileList"
-                name="avatar"
-                list-type="picture-card"
-                class="avatar-uploader"
-                :show-upload-list="false"
-                :before-upload="beforeUpload"
-                @change="handleChange"
-              >
-                <img v-if="formState.avatar" :src="formState.avatar" alt="avatar" />
-                <div v-else>
-                  <loading-outlined v-if="uploading" />
-                  <plus-outlined v-else />
-                  <div class="ant-upload-text">上传</div>
-                </div>
-              </a-upload>
+              <ImageUpload 
+                v-model:value="formState.avatar" 
+                upload-text="上传头像" 
+                alt="用户头像"
+                :max-size="2"
+                @change="handleAvatarChange"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -95,9 +86,23 @@
 import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/store'
-import { updateUserInfo, updatePassword } from '@/api/user'
-import type { UploadChangeParam, UploadProps } from 'ant-design-vue'
-import { LoadingOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { getProfile, updateProfile, updatePassword } from '@/api/user'
+import type { RuleObject } from 'ant-design-vue/es/form'
+import type { FormInstance } from 'ant-design-vue'
+import ImageUpload from '@/components/ImageUpload/ImageUpload.vue'
+
+// 定义用户信息接口
+interface UserInfo {
+  id?: number;
+  username?: string;
+  nickname?: string;
+  phone?: string;
+  email?: string;
+  avatar?: string;
+  role?: string;
+  createTime?: string | null;
+  verified?: boolean;
+}
 
 const userStore = useUserStore()
 
@@ -111,7 +116,7 @@ const formState = reactive({
 })
 
 // 表单验证规则
-const rules = {
+const rules: Record<string, RuleObject[]> = {
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
@@ -131,7 +136,7 @@ const passwordForm = reactive({
 })
 
 // 密码表单验证规则
-const passwordRules = {
+const passwordRules: Record<string, RuleObject[]> = {
   oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
@@ -140,7 +145,7 @@ const passwordRules = {
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
     {
-      validator: async (rule: any, value: string) => {
+      validator: async (rule: RuleObject, value: string) => {
         if (value !== passwordForm.newPassword) {
           throw new Error('两次输入的密码不一致')
         }
@@ -150,63 +155,78 @@ const passwordRules = {
   ]
 }
 
-// 上传相关
-const fileList = ref([])
-const uploading = ref(false)
+// 表单相关
 const submitting = ref(false)
 const passwordSubmitting = ref(false)
+const formRef = ref<FormInstance>()
+const passwordFormRef = ref<FormInstance>()
 
 // 初始化表单数据
-onMounted(() => {
-  const userInfo = userStore.userInfo
-  if (userInfo) {
-    formState.username = userInfo.username
-    formState.nickname = userInfo.nickname || ''
-    formState.phone = userInfo.phone || ''
-    formState.email = userInfo.email || ''
-    formState.avatar = userInfo.avatar || ''
-  }
+onMounted(async () => {
+  await fetchUserProfile()
 })
 
-// 上传前校验
-const beforeUpload = (file: File) => {
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isJpgOrPng) {
-    message.error('只能上传 JPG/PNG 格式的图片!')
+// 获取用户个人信息
+const fetchUserProfile = async () => {
+  try {
+    const response = await getProfile()
+    console.log('获取个人信息响应:', response)
+    
+    // 直接使用响应数据，因为API直接返回用户对象而不是标准的{code, message, data}格式
+    if (response) {
+      // 使用类型断言将response转换为UserInfo类型
+      const userInfo = response as unknown as UserInfo
+      formState.username = userInfo.username || ''
+      formState.nickname = userInfo.nickname || ''
+      formState.phone = userInfo.phone || ''
+      formState.email = userInfo.email || ''
+      formState.avatar = userInfo.avatar || ''
+      
+      // 如果需要，可以更新用户存储中的信息
+      if (userStore.userInfo) {
+        userStore.userInfo = {
+          ...userStore.userInfo,
+          ...userInfo
+        }
+      }
+    } else {
+      message.error('获取个人信息失败')
+    }
+  } catch (error) {
+    console.error('获取个人信息失败:', error)
+    message.error('获取个人信息失败，请稍后重试')
   }
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isLt2M) {
-    message.error('图片大小不能超过 2MB!')
-  }
-  return isJpgOrPng && isLt2M
 }
 
-// 处理上传变化
-const handleChange = (info: UploadChangeParam) => {
-  if (info.file.status === 'uploading') {
-    uploading.value = true
-    return
-  }
-  if (info.file.status === 'done') {
-    uploading.value = false
-    formState.avatar = info.file.response.url
-  }
+// 处理头像变更
+const handleAvatarChange = (url: string) => {
+  formState.avatar = url
+  console.log('头像已更新:', url)
 }
 
 // 提交表单
 const handleSubmit = async () => {
   try {
+    if (!formRef.value) return
+    await formRef.value.validate()
     submitting.value = true
-    const response = await updateUserInfo({
+    
+    const response = await updateProfile({
       nickname: formState.nickname,
       phone: formState.phone,
       email: formState.email,
       avatar: formState.avatar
     })
     
-    // 更新 store 中的用户信息
-    await userStore.getUserInfo()
-    message.success('个人信息修改成功')
+    console.log('更新个人信息响应:', response)
+    
+    if (response && response.code === 200) {
+      // 更新 store 中的用户信息
+      await userStore.getUserInfo()
+      message.success('个人信息修改成功')
+    } else {
+      message.error(response?.message || '修改失败，请重试')
+    }
   } catch (error) {
     console.error('修改个人信息失败:', error)
     message.error('修改失败，请重试')
@@ -218,13 +238,23 @@ const handleSubmit = async () => {
 // 提交密码修改
 const handlePasswordSubmit = async () => {
   try {
+    if (!passwordFormRef.value) return
+    await passwordFormRef.value.validate()
     passwordSubmitting.value = true
-    await updatePassword({
+    
+    const response = await updatePassword({
       oldPassword: passwordForm.oldPassword,
       newPassword: passwordForm.newPassword
     })
-    message.success('密码修改成功，请重新登录')
-    await userStore.logout()
+    
+    console.log('修改密码响应:', response)
+    
+    if (response && response.code === 200) {
+      message.success('密码修改成功，请重新登录')
+      await userStore.logout()
+    } else {
+      message.error(response?.message || '修改失败，请重试')
+    }
   } catch (error) {
     console.error('修改密码失败:', error)
     message.error('修改失败，请重试')
@@ -237,18 +267,5 @@ const handlePasswordSubmit = async () => {
 <style lang="less" scoped>
 .profile-container {
   padding: 24px;
-  
-  .avatar-uploader {
-    :deep(.ant-upload) {
-      width: 128px;
-      height: 128px;
-      
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-  }
 }
 </style> 

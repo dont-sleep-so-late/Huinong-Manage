@@ -35,8 +35,12 @@ interface UserState {
 
 export const useUserStore = defineStore('user', () => {
   // 从 localStorage 获取初始值
-  const token = ref<string>('')
-  const userInfo = ref<UserInfoResponse | null>(null)
+  const token = ref<string>(localStorage.getItem(TOKEN) || '')
+  const userInfo = ref<UserInfoResponse | null>(
+    localStorage.getItem(USER_INFO_KEY) 
+      ? JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}') 
+      : null
+  )
   const role = ref<string>('')
 
   // 登录

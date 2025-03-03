@@ -76,41 +76,15 @@ http.interceptors.response.use(
     if (response.headers['content-type']?.includes('application/octet-stream')) {
       return response
     }
-
-    const responseData = response.data
-
-    // 如果直接返回数组，说明是列表数据
-    if (Array.isArray(responseData)) {
-      return responseData
+    const { data } = response;
+    // 根据后端 Result 类的格式判断请求是否成功
+    if (data.code === 200) {
+      return data.data; // 直接返回数据部分
+    } else {
+      // 显示错误消息
+      message.error(data.message || '操作失败');
+      return Promise.reject(new Error(data.message || '操作失败'));
     }
-
-    // 如果是对象，检查是否包含 code 字段
-    if (typeof responseData === 'object' && responseData !== null) {
-      const { code, message: msg, data } = responseData
-
-      // 如果没有code，说明是直接返回数据
-      if (code === undefined) {
-        return responseData
-      }
-
-      // 处理业务状态码
-      switch (code) {
-        case 200:
-          return data
-        case 401:
-          // token过期或未登录
-          message.error('登录已过期，请重新登录')
-          const userStore = useUserStore()
-          userStore.logout()
-          return Promise.reject(new Error('登录已过期'))
-        default:
-          message.error(msg || '操作失败')
-          return Promise.reject(new Error(msg || '操作失败'))
-      }
-    }
-
-    // 其他情况直接返回响应数据
-    return responseData
   },
   (error) => {
     // 从队列中移除已完成的请求
@@ -123,8 +97,36 @@ http.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    console.error('响应错误:', error)
-    message.error(error.message || '网络错误')
+    // 处理不同的HTTP状态码
+    if (error) {
+      switch (error.status) {
+        case 401:
+          // 未授权，清除用户信息并跳转到登录页
+          const userStore = useUserStore();
+          userStore.logout();
+          window.location.href = '/login';
+          message.error('登录已过期，请重新登录');
+          break;
+          
+        case 403:
+          message.error('没有权限访问此资源');
+          break;
+          
+        case 404:
+          message.error('请求的资源不存在');
+          break;
+          
+        case 500:
+          message.error('服务器错误，请稍后重试');
+          break;
+          
+        default:
+          message.error(error.message || '操作失败');
+      }
+    } else {
+      // 网络错误
+      message.error('网络错误，请检查您的网络连接');
+    }
     return Promise.reject(error)
   }
 )

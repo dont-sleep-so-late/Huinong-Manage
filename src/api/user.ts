@@ -64,6 +64,12 @@ export interface UpdateUserData {
   status?: 0 | 1
 }
 
+// 修改密码数据接口
+export interface ChangePasswordData {
+  oldPassword: string
+  newPassword: string
+}
+
 // API响应接口
 export interface ApiResponse<T> {
   code: number
@@ -82,7 +88,7 @@ export const createUser = (data: CreateUserData) => {
 }
 
 // 更新用户
-export const updateUser = ( data: UpdateUserData) => {
+export const updateUser = (data: UpdateUserData) => {
   return request.put<UserInfo>(`/user/info`, data)
 }
 
@@ -109,4 +115,32 @@ export function getUserInfo(id: number) {
 // 更新用户状态
 export const updateUserStatus = (id: number, status: 0 | 1) => {
   return request.patch<void>(`/user/${id}/status`, { status })
+}
+
+// ===== 个人信息相关接口 =====
+
+// 获取当前登录用户的个人信息
+export const getProfile = () => {
+  return request.get<ApiResponse<UserInfo>>('/profile')
+}
+
+// 更新当前登录用户的个人信息
+export const updateProfile = (data: UpdateUserData) => {
+  return request.put<ApiResponse<UserInfo>>('/profile', data)
+}
+
+// 修改当前登录用户的密码
+export const updatePassword = (data: ChangePasswordData) => {
+  return request.put<ApiResponse<void>>('/profile/password', data)
+}
+
+// 上传头像
+export const uploadAvatar = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<ApiResponse<{ url: string }>>('/profile/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 } 

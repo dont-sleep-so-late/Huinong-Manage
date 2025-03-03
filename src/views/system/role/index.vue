@@ -141,10 +141,15 @@
       @cancel="handlePermissionCancel"
     >
       <a-tree
-        v-model:checkedKeys="checkedKeys"
+        v-model:checked-keys="checkedKeys"
         :tree-data="treeData"
         checkable
-        :defaultExpandAll="true"
+        :default-expand-all="true"
+        :field-names="{
+          key: 'key',
+          title: 'title',
+          children: 'children'
+        }"
       />
     </a-modal>
   </div>
@@ -276,7 +281,7 @@ const formRules = {
 
 // 权限设置弹窗
 const permissionVisible = ref(false)
-const checkedKeys = ref<(string | number)[]>([])
+const checkedKeys = ref<number[]>([])
 const currentRoleId = ref<number>()
 const permissionTree = ref<PermissionNode[]>([])
 
@@ -332,9 +337,9 @@ const handleEdit = (record: RoleInfo) => {
 const handlePermission = async (record: RoleInfo) => {
   currentRoleId.value = record.id
   try {
-    const { permissionTree , checkedKeys } = await getRolePermissionTree(record.id)
-    permissionTree.value = permissionTree
-    checkedKeys.value =  checkedKeys.map(Number)
+    const data = await getRolePermissionTree(record.id)
+    permissionTree.value = data.permissionTree
+    checkedKeys.value =  data.checkedKeys.map(Number)
     permissionVisible.value = true
   } catch (error) {
     message.error('获取权限数据失败')

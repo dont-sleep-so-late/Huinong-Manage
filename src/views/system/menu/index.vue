@@ -18,7 +18,7 @@
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'icon'">
-            <component :is="isValidIcon(text) ? icons[text] : null" />
+            <component :is="text ? `${text}-outlined` : null" v-if="text" />
           </template>
           <template v-else-if="column.key === 'type'">
             <a-tag :color="getTypeColor(text)">
@@ -118,7 +118,7 @@
           >
             <a-select-option v-for="option in iconOptions" :key="option.value" :value="option.value">
               <span>
-                <component :is="isValidIcon(option.value) ? icons[option.value] : null" />
+                <component :is="`${option.value}-outlined`" />
                 <span style="margin-left: 8px">{{ option.label }}</span>
               </span>
             </a-select-option>
@@ -161,46 +161,99 @@ import type { TableColumnsType, FormInstance } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { SelectProps } from 'ant-design-vue/es/select'
-import {
-  PlusOutlined,
-  HomeOutlined,
-  ShoppingOutlined,
-  OrderedListOutlined,
-  UserOutlined,
-  TeamOutlined,
-  SettingOutlined
-} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import type { DataNode } from 'ant-design-vue/es/tree'
+import {
+  HomeOutlined,
+  ShoppingOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  TeamOutlined,
+  SettingOutlined,
+  AppstoreOutlined,
+  BarsOutlined,
+  MenuOutlined,
+  OrderedListOutlined,
+  UnorderedListOutlined,
+  DashboardOutlined,
+  FormOutlined,
+  TableOutlined,
+  ProfileOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  InfoOutlined,
+  QuestionOutlined,
+  ExclamationOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  CalendarOutlined,
+  SearchOutlined,
+  EyeOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from '@ant-design/icons-vue'
 import {
   getPermissionTree,
   createPermission,
   updatePermission,
   deletePermission,
   updatePermissionStatus,
-  type PermissionItem,
-  type PermissionType
+  type PermissionItem
 } from '@/api/permission'
 
-// 图标映射
-const icons = {
-  HomeOutlined,
-  ShoppingOutlined,
-  OrderedListOutlined,
-  UserOutlined,
-  TeamOutlined,
-  SettingOutlined
-} as const
+// 图标列表
+const iconList = [
+  'home', 'shopping', 'shopping-cart', 'user', 'team', 'setting', 
+  'appstore', 'bars', 'menu', 'ordered-list', 'unordered-list', 
+  'dashboard', 'form', 'table', 'profile', 'check', 'close', 
+  'plus', 'minus', 'info', 'question', 'exclamation', 'lock', 
+  'unlock', 'calendar', 'search', 'eye', 'delete', 'edit',
+]
 
 // 类型定义
 type PermissionType = 'menu' | 'button' | 'data'
-type IconType = keyof typeof icons
+type IconType = string
 
 // 图标选项
-const iconOptions = (Object.keys(icons) as IconType[]).map(key => ({
-  label: key,
-  value: key
+const iconOptions = iconList.map(icon => ({
+  label: icon,
+  value: icon
 }))
+
+// 图标组件映射
+const icons = {
+  HomeOutlined,
+  ShoppingOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  TeamOutlined,
+  SettingOutlined,
+  AppstoreOutlined,
+  BarsOutlined,
+  MenuOutlined,
+  OrderedListOutlined,
+  UnorderedListOutlined,
+  DashboardOutlined,
+  FormOutlined,
+  TableOutlined,
+  ProfileOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  InfoOutlined,
+  QuestionOutlined,
+  ExclamationOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  CalendarOutlined,
+  SearchOutlined,
+  EyeOutlined,
+  DeleteOutlined,
+  EditOutlined
+} as const
 
 // 权限类型选项
 const typeOptions = [
@@ -229,7 +282,7 @@ interface FormState {
   name: string
   code: string
   type: PermissionType
-  icon: IconType | null
+  icon: IconType | undefined
   path: string
   component: string
   sortOrder: number
@@ -242,7 +295,7 @@ const initialFormState: FormState = {
   name: '',
   code: '',
   type: 'menu',
-  icon: null,
+  icon: undefined,
   path: '',
   component: '',
   sortOrder: 0,
@@ -299,7 +352,10 @@ const columns: TableColumnsType<MenuItem> = [
     dataIndex: 'icon',
     key: 'icon',
     customRender: ({ text }) => {
-      return isValidIcon(text) ? h(icons[text]) : null
+      if (!text) return null
+      const iconName = `${text}-outlined`
+      const IconComponent = icons[iconName as keyof typeof icons]
+      return IconComponent ? h(IconComponent) : null
     }
   },
   {
@@ -381,7 +437,7 @@ const isMenuItem = (value: unknown): value is MenuItem => {
 }
 
 const isValidIcon = (value: unknown): value is IconType => {
-  return typeof value === 'string' && value in icons
+  return typeof value === 'string' && iconList.includes(value)
 }
 
 const isValidType = (value: unknown): value is PermissionType => {
@@ -467,7 +523,8 @@ const handleModalOk = async () => {
     await formRef.value.validate()
     const data = {
       ...formData,
-      sortOrder: Number(formData.sortOrder)
+      sortOrder: Number(formData.sortOrder),
+      icon: formData.icon === undefined ? null : formData.icon
     }
     if (data.id) {
       await updatePermission(data.id, data)
@@ -497,7 +554,7 @@ const fetchData = async () => {
       const convertedData = res.map(item => ({
         ...item,
         type: item.type || 'menu',
-        icon: item.icon && isValidIcon(item.icon) ? item.icon : null,
+        icon: item.icon && isValidIcon(item.icon) ? item.icon : undefined,
         status: item.status as 0 | 1
       }))
       tableData.value = convertedData
@@ -513,17 +570,19 @@ const fetchData = async () => {
   }
 }
 
-// 表单相关类型
-type SelectValue = string | number | undefined
-
-const handleTypeChange = (value: string) => {
-  if (isValidType(value)) {
+// 表单相关处理函数
+const handleTypeChange: SelectProps['onChange'] = (value) => {
+  if (typeof value === 'string' && isValidType(value)) {
     formData.type = value
   }
 }
 
-const handleIconChange = (value: string | null) => {
-  formData.icon = value && isValidIcon(value) ? value : null
+const handleIconChange: SelectProps['onChange'] = (value) => {
+  if (typeof value === 'string' && isValidIcon(value)) {
+    formData.icon = value
+  } else {
+    formData.icon = undefined
+  }
 }
 
 // 初始化
