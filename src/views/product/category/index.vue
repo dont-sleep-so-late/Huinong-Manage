@@ -24,11 +24,11 @@
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="handleSearch">
-              <template #icon><search-outlined /></template>
+              <template #icon><IconProvider name="search" /></template>
               查询
             </a-button>
             <a-button @click="handleReset">
-              <template #icon><redo-outlined /></template>
+              <template #icon><IconProvider name="redo" /></template>
               重置
             </a-button>
           </a-space>
@@ -39,8 +39,8 @@
     <!-- 表格 -->
     <a-card class="table-card" :bordered="false">
       <template #extra>
-        <a-button type="primary" @click="handleAdd">
-          <template #icon><plus-outlined /></template>
+        <a-button type="primary" @click="() => handleAdd()">
+          <template #icon><IconProvider name="plus" /></template>
           新增
         </a-button>
       </template>
@@ -54,7 +54,8 @@
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'icon'">
-            <img :src="text" alt="icon" class="category-icon" />
+            <img v-if="text" :src="text" alt="icon" class="category-icon" />
+            <span v-else>-</span>
           </template>
           
           <template v-else-if="column.key === 'status'">
@@ -65,20 +66,20 @@
           
           <template v-else-if="column.key === 'action'">
             <a-space>
-              <a @click="handleAdd(record)">添加子分类</a>
+              <a @click="() => handleAdd(record)">添加子分类</a>
               <a-divider type="vertical" />
-              <a @click="handleEdit(record)">编辑</a>
+              <a @click="() => handleEdit(record)">编辑</a>
               <a-divider type="vertical" />
               <a-popconfirm
                 :title="record.status === 1 ? '确定要禁用该分类吗？' : '确定要启用该分类吗？'"
-                @confirm="handleToggleStatus(record)"
+                @confirm="() => handleToggleStatus(record)"
               >
                 <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
               </a-popconfirm>
               <a-divider type="vertical" />
               <a-popconfirm
                 title="确定要删除该分类吗？"
-                @confirm="handleDelete(record)"
+                @confirm="() => handleDelete(record)"
               >
                 <a class="text-danger">删除</a>
               </a-popconfirm>
@@ -108,7 +109,7 @@
           name="parentId"
         >
           <a-cascader
-            v-model:value="formData.parentId"
+            v-model:value="parentIdValue"
             :options="categoryOptions"
             placeholder="请选择上级分类"
             :field-names="{
@@ -116,6 +117,7 @@
               value: 'id',
               children: 'children'
             }"
+            :disabled="isEdit"
           />
         </a-form-item>
         <a-form-item label="分类名称" name="name">
@@ -125,23 +127,26 @@
           />
         </a-form-item>
         <a-form-item label="分类图标" name="icon">
-          <a-upload
-            v-model:file-list="fileList"
-            list-type="picture-card"
-            :show-upload-list="false"
-            :before-upload="beforeUpload"
-            @change="handleChange"
-          >
-            <img v-if="formData.icon" :src="formData.icon" alt="icon" class="upload-icon" />
-            <div v-else>
-              <plus-outlined />
-              <div style="margin-top: 8px">上传</div>
-            </div>
-          </a-upload>
+          <image-upload
+            v-model:value="formData.icon"
+            :max-size="2"
+            upload-text="上传图标"
+            alt="分类图标"
+            @change="handleIconUploaded"
+          />
         </a-form-item>
-        <a-form-item label="排序" name="sort">
+        <a-form-item label="Banner图" name="banner">
+          <image-upload
+            v-model:value="formData.banner"
+            :max-size="2"
+            upload-text="上传Banner"
+            alt="分类Banner"
+            @change="handleBannerUploaded"
+          />
+        </a-form-item>
+        <a-form-item label="排序" name="sortOrder">
           <a-input-number
-            v-model:value="formData.sort"
+            v-model:value="formData.sortOrder"
             :min="0"
             style="width: 100%"
             placeholder="请输入排序号"
@@ -159,33 +164,23 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
-import {
-  SearchOutlined,
-  RedoOutlined,
-  PlusOutlined
-} from '@ant-design/icons-vue'
+import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import type { UploadChangeParam } from 'ant-design-vue'
-
-interface CategoryInfo {
-  id: number
-  parentId: number
-  name: string
-  icon: string
-  sort: number
-  status: number
-  createTime: string
-  children?: CategoryInfo[]
-}
-
-interface SearchForm {
-  name?: string
-  status?: number
-  pageNum: number
-  pageSize: number
-}
+import ImageUpload from '@/components/ImageUpload'
+import IconProvider from '@/components/IconProvider.vue'
+import {
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getCategoryDetail,
+  getCategoryTree,
+  updateCategoryStatus,
+  getCategoryPage,
+  type Category,
+  type CategoryDTO,
+  type CategoryQuery
+} from '@/api/category'
 
 // 表格列定义
 const columns = [
@@ -221,7 +216,7 @@ const columns = [
 ]
 
 // 搜索表单数据
-const searchForm = reactive<SearchForm>({
+const searchForm = reactive<CategoryQuery>({
   name: '',
   status: undefined,
   pageNum: 1,
@@ -230,29 +225,36 @@ const searchForm = reactive<SearchForm>({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<CategoryInfo[]>([])
+const tableData = ref<Category[]>([])
 const pagination = reactive<TablePaginationConfig>({
   total: 0,
   current: 1,
   pageSize: 10,
   showSizeChanger: true,
-  showQuickJumper: true
+  showQuickJumper: true,
+  showTotal: (total: number) => `共 ${total} 条`
 })
 
 // 分类选项
-const categoryOptions = ref<CategoryInfo[]>([])
+const categoryOptions = ref<Category[]>([])
 
 // 新增/编辑弹窗
 const modalVisible = ref(false)
 const modalTitle = ref('新增分类')
 const formRef = ref()
-const formData = reactive<Partial<CategoryInfo>>({
+const isEdit = ref(false)
+const formData = reactive<Partial<CategoryDTO & { id?: number }>>({
   parentId: 0,
   name: '',
   icon: '',
-  sort: 0,
-  status: 1
+  banner: '',
+  sortOrder: 0,
+  status: 1,
+  level: 1
 })
+
+// 处理Cascader组件的值
+const parentIdValue = ref<string[]>([])
 
 // 表单验证规则
 const formRules = {
@@ -262,35 +264,19 @@ const formRules = {
   icon: [
     { required: true, message: '请上传分类图标' }
   ],
-  sort: [
+  sortOrder: [
     { required: true, message: '请输入排序号' }
   ]
 }
 
-// 图片上传相关
-const fileList = ref([])
-const beforeUpload = (file: File) => {
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isJpgOrPng) {
-    message.error('只能上传JPG/PNG格式的图片!')
-  }
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isLt2M) {
-    message.error('图片大小不能超过2MB!')
-  }
-  return isJpgOrPng && isLt2M
+// 图标上传成功
+const handleIconUploaded = (url: string) => {
+  formData.icon = url
 }
 
-const handleChange = (info: UploadChangeParam) => {
-  if (info.file.status === 'uploading') {
-    loading.value = true
-    return
-  }
-  if (info.file.status === 'done') {
-    // TODO: 处理上传成功后的逻辑
-    formData.icon = info.file.response.url
-    loading.value = false
-  }
+// Banner上传成功
+const handleBannerUploaded = (url: string) => {
+  formData.banner = url
 }
 
 // 查询
@@ -307,51 +293,79 @@ const handleReset = () => {
 }
 
 // 新增
-const handleAdd = (record?: CategoryInfo) => {
+const handleAdd = (record?: any) => {
+  isEdit.value = false
   modalTitle.value = record ? '新增子分类' : '新增分类'
   formData.id = undefined
   formData.parentId = record ? record.id : 0
+  formData.level = record ? record.level + 1 : 1
   formData.name = ''
   formData.icon = ''
-  formData.sort = 0
+  formData.banner = ''
+  formData.sortOrder = 0
   formData.status = 1
-  fileList.value = []
+  
+  // 设置Cascader的值
+  if (record && record.id) {
+    parentIdValue.value = [record.id.toString()]
+  } else {
+    parentIdValue.value = []
+  }
+  
   modalVisible.value = true
 }
 
 // 编辑
-const handleEdit = (record: CategoryInfo) => {
-  modalTitle.value = '编辑分类'
-  Object.assign(formData, record)
-  fileList.value = [
-    {
-      uid: '-1',
-      name: 'icon.png',
-      status: 'done',
-      url: record.icon
+const handleEdit = async (record: any) => {
+  try {
+    isEdit.value = true
+    modalTitle.value = '编辑分类'
+    const res = await getCategoryDetail(record.id)
+    formData.id = res.id
+    formData.parentId = res.parentId
+    formData.level = res.level
+    formData.name = res.name
+    formData.icon = res.icon || ''
+    formData.banner = res.banner || ''
+    formData.sortOrder = res.sort
+    formData.status = res.status
+    
+    // 设置Cascader的值
+    if (res.parentId && res.parentId !== 0) {
+      parentIdValue.value = [res.parentId.toString()]
+    } else {
+      parentIdValue.value = []
     }
-  ]
-  modalVisible.value = true
+    
+    modalVisible.value = true
+  } catch (error) {
+    console.error('获取分类详情失败:', error)
+    message.error('获取分类详情失败')
+  }
 }
 
 // 切换状态
-const handleToggleStatus = async (record: CategoryInfo) => {
+const handleToggleStatus = async (record: any) => {
   try {
-    // TODO: 调用切换状态API
+    const newStatus = record.status === 1 ? 0 : 1
+    await updateCategoryStatus(record.id, newStatus)
     message.success(record.status === 1 ? '禁用成功' : '启用成功')
     fetchData()
   } catch (error) {
+    console.error('更新分类状态失败:', error)
     message.error('操作失败')
   }
 }
 
 // 删除
-const handleDelete = async (record: CategoryInfo) => {
+const handleDelete = async (record: any) => {
   try {
-    // TODO: 调用删除API
+    await deleteCategory(record.id)
     message.success('删除成功')
     fetchData()
+    fetchCategoryTree()
   } catch (error) {
+    console.error('删除分类失败:', error)
     message.error('删除失败')
   }
 }
@@ -360,11 +374,24 @@ const handleDelete = async (record: CategoryInfo) => {
 const handleModalOk = () => {
   formRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用保存API
-      message.success('保存成功')
+      // 从Cascader获取parentId
+      if (parentIdValue.value && parentIdValue.value.length > 0) {
+        formData.parentId = parseInt(parentIdValue.value[parentIdValue.value.length - 1])
+      }
+      
+      if (isEdit.value) {
+        const { id, ...updateData } = formData
+        await updateCategory(id!, updateData as Partial<CategoryDTO>)
+        message.success('更新成功')
+      } else {
+        await createCategory(formData as CategoryDTO)
+        message.success('创建成功')
+      }
       modalVisible.value = false
       fetchData()
+      fetchCategoryTree()
     } catch (error) {
+      console.error('保存分类失败:', error)
       message.error('保存失败')
     }
   })
@@ -387,43 +414,41 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    tableData.value = [
-      {
-        id: 1,
-        parentId: 0,
-        name: '蔬菜水果',
-        icon: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
-        sort: 1,
-        status: 1,
-        createTime: '2024-01-01 00:00:00',
-        children: [
-          {
-            id: 2,
-            parentId: 1,
-            name: '新鲜蔬菜',
-            icon: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
-            sort: 1,
-            status: 1,
-            createTime: '2024-01-01 00:00:00'
-          }
-        ]
-      }
-    ]
-    pagination.total = 1
+    const params: CategoryQuery = {
+      pageNum: pagination.current || 1,
+      pageSize: pagination.pageSize || 10,
+      name: searchForm.name,
+      status: searchForm.status
+    }
     
-    // 更新分类选项
-    categoryOptions.value = tableData.value
+    const result = await getCategoryPage(params)
+    
+    tableData.value = result.records
+    pagination.total = result.total
   } catch (error) {
+    console.error('获取分类列表失败:', error)
     message.error('获取数据失败')
   } finally {
     loading.value = false
   }
 }
 
+// 获取分类树
+const fetchCategoryTree = async () => {
+  try {
+    const res = await getCategoryTree()
+    categoryOptions.value = res
+  } catch (error) {
+    console.error('获取分类树失败:', error)
+    message.error('获取分类树失败')
+  }
+}
+
 // 初始化
-fetchData()
+onMounted(() => {
+  fetchData()
+  fetchCategoryTree()
+})
 </script>
 
 <style lang="less" scoped>
@@ -441,12 +466,6 @@ fetchData()
   .category-icon {
     width: 32px;
     height: 32px;
-    object-fit: cover;
-  }
-
-  .upload-icon {
-    width: 100%;
-    height: 100%;
     object-fit: cover;
   }
 

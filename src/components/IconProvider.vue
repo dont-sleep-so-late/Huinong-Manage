@@ -12,7 +12,8 @@ export default defineComponent({
   props: {
     name: {
       type: String,
-      required: true
+      required: false,
+      default: ''
     }
   },
   setup(props) {

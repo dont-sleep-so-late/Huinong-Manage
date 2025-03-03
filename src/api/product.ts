@@ -3,19 +3,48 @@ import { request } from '@/utils/http'
 export interface Product {
   id: number
   name: string
-  categoryId: number[]
-  categoryName: string
-  price: number
-  originalPrice?: number
-  stock: number
   description: string
-  images: string[]
+  mainImage: string
+  detailImages: string[]
+  categoryId: number
+  categoryName?: string
+  price: number
+  stock: number
   status: 0 | 1 // 0-下架 1-上架
-  sort: number
-  createTime: string
-  updateTime: string
+  salesVolume?: number
+  region: string
+  unit: string
+  weight: number
+  auditStatus?: 0 | 1 | 2 // 0-待审核 1-已通过 2-已拒绝
+  auditRemark?: string
+  createdTime?: string
+  updatedTime?: string
   sellerId?: number
   sellerName?: string
+}
+
+export interface ProductSpec {
+  specName: string
+  specValue: string
+  price: number
+  stock: number
+  skuCode?: string
+  status: 0 | 1
+}
+
+export interface ProductCreateDTO {
+  name: string
+  description: string
+  mainImage: string
+  detailImages: string[]
+  categoryId: number
+  price: number
+  stock: number
+  status: 0 | 1
+  region: string
+  unit: string
+  weight: number
+  specs?: ProductSpec[]
 }
 
 export interface ProductQuery {
@@ -23,6 +52,7 @@ export interface ProductQuery {
   pageSize?: number
   name?: string
   categoryId?: number
+  categoryIds?: number[] | string[] // 添加categoryIds字段，支持数组形式的分类ID
   status?: number
   minPrice?: number
   maxPrice?: number
@@ -33,12 +63,18 @@ export interface ProductQuery {
 export interface AuditParams {
   id: number
   status: 1 | 2
-  auditReason: string
+  auditRemark: string
 }
 
 // 获取商品列表（分页）
 export function getProductList(params: ProductQuery) {
-  return request.get<{ records: Product[]; total: number; size: number; current: number; pages: number }>('/products/list', { params })
+  return request.get<{
+    records: Product[];
+    total: number;
+    size: number;
+    current: number;
+    pages: number;
+  }>('/products/list', { params })
 }
 
 // 获取商品总数
@@ -52,13 +88,13 @@ export function getProductDetail(id: number) {
 }
 
 // 添加商品
-export function addProduct(data: Omit<Product, 'id' | 'createTime' | 'updateTime'>) {
-  return request.post<number>('/products', data)
+export function addProduct(data: ProductCreateDTO) {
+  return request.post<Product>('/products', data)
 }
 
 // 更新商品
-export function updateProduct(id: number, data: Partial<Product>) {
-  return request.put(`/products/${id}`, data)
+export function updateProduct(id: number, data: Partial<ProductCreateDTO>) {
+  return request.put<Product>(`/products/${id}`, data)
 }
 
 // 删除商品
@@ -83,7 +119,7 @@ export function batchUpdateProductStatus(ids: number[], status: 0 | 1) {
 
 // 获取商品分类
 export function getCategories() {
-  return request.get<Array<{ id: number; name: string; children?: Array<{ id: number; name: string }> }>>('/categories')
+  return request.get<Array<{ id: number; name: string; children?: Array<{ id: number; name: string }> }>>('/categories/tree')
 }
 
 // 审核商品
@@ -92,7 +128,7 @@ export function auditProduct(data: AuditParams) {
 }
 
 // 批量审核商品
-export function batchAuditProducts(data: { ids: number[]; auditStatus: 1 | 2; auditRemark?: string }) {
+export function batchAuditProducts(data: { ids: number[]; status: 1 | 2; remark?: string }) {
   return request.put('/products/batch/audit', data)
 }
 

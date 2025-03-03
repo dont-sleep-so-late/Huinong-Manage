@@ -46,6 +46,9 @@ export const ICON_NAMES = {
   EYE: 'eye',
   SETTING: 'setting',
   TOOL: 'tool',
+  EXPORT: 'export',
+  REDO: 'redo',
+  STOP: 'stop',
   
   // 状态图标
   CHECK: 'check',
@@ -71,6 +74,8 @@ export const ICON_LIST = Object.values(ICON_NAMES)
  * @returns 图标组件名称
  */
 export const getIconComponentName = (name: string): string => {
+  if (!name) return ''
+  
   return name
     .split('-')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())

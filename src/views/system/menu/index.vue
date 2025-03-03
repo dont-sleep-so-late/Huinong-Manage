@@ -18,7 +18,7 @@
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'icon'">
-            <IconProvider :name="text" />
+            <IconProvider v-if="text" :name="text" />
           </template>
           <template v-else-if="column.key === 'type'">
             <a-tag :color="getTypeColor(text)">
@@ -446,7 +446,7 @@ const fetchData = async () => {
       const convertedData = res.map(item => ({
         ...item,
         type: item.type || 'menu',
-        icon: item.icon && isValidIcon(item.icon) ? item.icon : undefined,
+        icon: item.icon || undefined,
         status: item.status as 0 | 1
       }))
       tableData.value = convertedData
