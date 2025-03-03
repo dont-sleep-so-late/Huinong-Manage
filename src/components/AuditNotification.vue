@@ -1,7 +1,7 @@
 <template>
   <a-badge :count="count" :dot="false" :overflowCount="99">
     <a-button type="link" @click="handleClick">
-      <BellOutlined />
+      <IconProvider name="check" />
     </a-button>
   </a-badge>
 </template>
@@ -9,13 +9,13 @@
 <script lang="ts">
 import { ref, onMounted, onUnmounted, defineComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { BellOutlined } from '@ant-design/icons-vue'
+import IconProvider from '@/components/IconProvider.vue'
 import { getPendingAuditCount } from '@/api/product'
 
 export default defineComponent({
   name: 'AuditNotification',
   components: {
-    BellOutlined
+    IconProvider
   },
   props: {
     refreshInterval: {

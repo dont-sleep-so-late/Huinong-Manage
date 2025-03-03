@@ -256,3 +256,65 @@ pnpm type-check
    - XSS防御
    - CSRF防御
    - 请求加密
+
+## 图标组件使用说明
+
+项目中使用了统一的图标组件 `IconProvider` 来管理所有图标，提高了代码复用率和可维护性。
+
+### 基本使用
+
+```vue
+<template>
+  <IconProvider name="home" />
+</template>
+
+<script setup>
+import IconProvider from '@/components/IconProvider.vue'
+</script>
+```
+
+### 图标名称
+
+所有图标名称都在 `src/utils/icons.ts` 文件中定义，可以通过 `ICON_NAMES` 常量获取：
+
+```vue
+<template>
+  <IconProvider :name="ICON_NAMES.HOME" />
+</template>
+
+<script setup>
+import IconProvider from '@/components/IconProvider.vue'
+import { ICON_NAMES } from '@/utils/icons'
+</script>
+```
+
+### 可用图标列表
+
+项目中可用的图标列表可以通过 `ICON_LIST` 常量获取，常用于图标选择器等场景：
+
+```vue
+<template>
+  <div v-for="icon in ICON_LIST" :key="icon">
+    <IconProvider :name="icon" />
+    {{ icon }}
+  </div>
+</template>
+
+<script setup>
+import IconProvider from '@/components/IconProvider.vue'
+import { ICON_LIST } from '@/utils/icons'
+</script>
+```
+
+### 图标分类
+
+图标按照以下分类进行组织：
+
+1. 导航和菜单：dashboard, home, menu, bars 等
+2. 布局控制：menu-fold, menu-unfold, fullscreen 等
+3. 用户和权限：user, team, key, lock 等
+4. 商品和订单：shopping, shopping-cart, appstore 等
+5. 文件和表单：file-text, form, table, profile 等
+6. 操作图标：plus, minus, edit, delete, search 等
+7. 状态图标：check, close, info, question, exclamation 等
+8. 其他：calendar, customer-service, bell 等

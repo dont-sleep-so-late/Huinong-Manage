@@ -1,12 +1,14 @@
 <template>
   <a-layout-header class="layout-header">
-    <menu-unfold-outlined
+    <IconProvider
       v-if="appStore.collapsed"
+      name="menu-unfold"
       class="trigger"
       @click="appStore.toggleCollapsed"
     />
-    <menu-fold-outlined
+    <IconProvider
       v-else
+      name="menu-fold"
       class="trigger"
       @click="appStore.toggleCollapsed"
     />
@@ -22,34 +24,35 @@
     </a-breadcrumb>
 
     <div class="header-right">
-      <!-- 审核通知 -->
-      <AuditNotification />
+      <!-- 消息通知 -->
+      <MessageNotification />
+      
       
       <!-- 全屏按钮 -->
       <a-button type="link" @click="toggleFullscreen">
-        <fullscreen-outlined v-if="!isFullscreen" />
-        <fullscreen-exit-outlined v-else />
+        <IconProvider v-if="!isFullscreen" name="fullscreen" />
+        <IconProvider v-else name="fullscreen-exit" />
       </a-button>
 
       <!-- 用户信息 -->
       <a-dropdown>
         <div class="user-info">
-          <a-avatar :src="userStore.userInfo?.avatar" />
+          <a-avatar :src="userStore.userInfo?.avatar || ''" />
           <span class="username">{{ userStore.userInfo?.nickname || userStore.userInfo?.username }}</span>
         </div>
         <template #overlay>
           <a-menu>
             <a-menu-item key="profile" @click="handleProfile">
-              <UserOutlined />
+              <IconProvider name="user" />
               个人中心
             </a-menu-item>
             <a-menu-item key="settings">
-              <SettingOutlined />
+              <IconProvider name="setting" />
               系统设置
             </a-menu-item>
             <a-menu-divider />
             <a-menu-item key="logout" @click="handleLogout">
-              <LogoutOutlined />
+              <IconProvider name="logout" />
               退出登录
             </a-menu-item>
           </a-menu>
@@ -63,18 +66,11 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { RouteLocationMatched } from 'vue-router'
-import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  UserOutlined,
-  SettingOutlined,
-  LogoutOutlined,
-  FullscreenOutlined,
-  FullscreenExitOutlined
-} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useAppStore, useUserStore } from '@/store'
-import AuditNotification from '@/components/AuditNotification.vue'
+import MessageNotification from '@/components/MessageNotification.vue'
+import IconProvider from '@/components/IconProvider.vue'
+import { ICON_NAMES } from '@/utils/icons'
 
 const router = useRouter()
 const route = useRoute()

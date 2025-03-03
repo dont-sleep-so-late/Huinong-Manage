@@ -4,7 +4,7 @@
     <a-card :bordered="false">
       <template #extra>
         <a-button type="primary" @click="handleAdd">
-          <template #icon><plus-outlined /></template>
+          <template #icon><IconProvider name="plus" /></template>
           新增
         </a-button>
       </template>
@@ -18,7 +18,7 @@
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'icon'">
-            <component :is="text ? `${text}-outlined` : null" v-if="text" />
+            <IconProvider :name="text" />
           </template>
           <template v-else-if="column.key === 'type'">
             <a-tag :color="getTypeColor(text)">
@@ -115,12 +115,13 @@
             style="width: 100%"
             allow-clear
             @change="handleIconChange"
+            option-label-prop="label"
           >
-            <a-select-option v-for="option in iconOptions" :key="option.value" :value="option.value">
-              <span>
-                <component :is="`${option.value}-outlined`" />
-                <span style="margin-left: 8px">{{ option.label }}</span>
-              </span>
+            <a-select-option v-for="icon in iconList" :key="icon" :value="icon" :label="icon">
+              <div class="icon-option">
+                <IconProvider :name="icon" />
+                <span class="icon-label">{{ icon }}</span>
+              </div>
             </a-select-option>
           </a-select>
         </a-form-item>
@@ -164,37 +165,6 @@ import type { SelectProps } from 'ant-design-vue/es/select'
 import { message } from 'ant-design-vue'
 import type { DataNode } from 'ant-design-vue/es/tree'
 import {
-  HomeOutlined,
-  ShoppingOutlined,
-  ShoppingCartOutlined,
-  UserOutlined,
-  TeamOutlined,
-  SettingOutlined,
-  AppstoreOutlined,
-  BarsOutlined,
-  MenuOutlined,
-  OrderedListOutlined,
-  UnorderedListOutlined,
-  DashboardOutlined,
-  FormOutlined,
-  TableOutlined,
-  ProfileOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  PlusOutlined,
-  MinusOutlined,
-  InfoOutlined,
-  QuestionOutlined,
-  ExclamationOutlined,
-  LockOutlined,
-  UnlockOutlined,
-  CalendarOutlined,
-  SearchOutlined,
-  EyeOutlined,
-  DeleteOutlined,
-  EditOutlined,
-} from '@ant-design/icons-vue'
-import {
   getPermissionTree,
   createPermission,
   updatePermission,
@@ -202,58 +172,15 @@ import {
   updatePermissionStatus,
   type PermissionItem
 } from '@/api/permission'
+import { ICON_LIST } from '@/utils/icons'
+import IconProvider from '@/components/IconProvider.vue'
 
 // 图标列表
-const iconList = [
-  'home', 'shopping', 'shopping-cart', 'user', 'team', 'setting', 
-  'appstore', 'bars', 'menu', 'ordered-list', 'unordered-list', 
-  'dashboard', 'form', 'table', 'profile', 'check', 'close', 
-  'plus', 'minus', 'info', 'question', 'exclamation', 'lock', 
-  'unlock', 'calendar', 'search', 'eye', 'delete', 'edit',
-]
+const iconList = ICON_LIST
 
 // 类型定义
 type PermissionType = 'menu' | 'button' | 'data'
 type IconType = string
-
-// 图标选项
-const iconOptions = iconList.map(icon => ({
-  label: icon,
-  value: icon
-}))
-
-// 图标组件映射
-const icons = {
-  HomeOutlined,
-  ShoppingOutlined,
-  ShoppingCartOutlined,
-  UserOutlined,
-  TeamOutlined,
-  SettingOutlined,
-  AppstoreOutlined,
-  BarsOutlined,
-  MenuOutlined,
-  OrderedListOutlined,
-  UnorderedListOutlined,
-  DashboardOutlined,
-  FormOutlined,
-  TableOutlined,
-  ProfileOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  PlusOutlined,
-  MinusOutlined,
-  InfoOutlined,
-  QuestionOutlined,
-  ExclamationOutlined,
-  LockOutlined,
-  UnlockOutlined,
-  CalendarOutlined,
-  SearchOutlined,
-  EyeOutlined,
-  DeleteOutlined,
-  EditOutlined
-} as const
 
 // 权限类型选项
 const typeOptions = [
@@ -350,21 +277,12 @@ const columns: TableColumnsType<MenuItem> = [
   {
     title: '图标',
     dataIndex: 'icon',
-    key: 'icon',
-    customRender: ({ text }) => {
-      if (!text) return null
-      const iconName = `${text}-outlined`
-      const IconComponent = icons[iconName as keyof typeof icons]
-      return IconComponent ? h(IconComponent) : null
-    }
+    key: 'icon'
   },
   {
     title: '权限类型',
     dataIndex: 'type',
-    key: 'type',
-    customRender: ({ text }) => {
-      return h('a-tag', { color: getTypeColor(text) }, () => getTypeText(text))
-    }
+    key: 'type'
   },
   {
     title: '权限编码',
@@ -389,38 +307,12 @@ const columns: TableColumnsType<MenuItem> = [
   {
     title: '状态',
     dataIndex: 'status',
-    key: 'status',
-    customRender: ({ text }) => {
-      const status = Number(text)
-      return h('a-tag', { color: status === 1 ? 'success' : 'error' }, () => status === 1 ? '显示' : '隐藏')
-    }
+    key: 'status'
   },
   {
     title: '操作',
     key: 'action',
-    width: 200,
-    customRender: ({ record }) => {
-      if (!isMenuItem(record)) return null
-      return h('a-space', {}, [
-        h('a', { onClick: () => handleAdd(record) }, '新增'),
-        h('a-divider', { type: 'vertical' }),
-        h('a', { onClick: () => handleEdit(record) }, '编辑'),
-        h('a-divider', { type: 'vertical' }),
-        h('a-popconfirm', {
-          title: record.status === 1 ? '确定要隐藏该菜单吗？' : '确定要显示该菜单吗？',
-          onConfirm: () => handleToggleStatus(record)
-        }, {
-          default: () => h('a', {}, record.status === 1 ? '隐藏' : '显示')
-        }),
-        h('a-divider', { type: 'vertical' }),
-        h('a-popconfirm', {
-          title: '确定要删除该菜单吗？',
-          onConfirm: () => handleDelete(record)
-        }, {
-          default: () => h('a', { class: 'text-danger' }, '删除')
-        })
-      ])
-    }
+    width: 220
   }
 ]
 
@@ -593,6 +485,15 @@ fetchData()
 .menu-list {
   .text-danger {
     color: #ff4d4f;
+  }
+  
+  .icon-option {
+    display: flex;
+    align-items: center;
+    
+    .icon-label {
+      margin-left: 8px;
+    }
   }
 }
 </style> 

@@ -21,7 +21,7 @@
         <template v-if="menu.children && menu.children.length > 0">
           <a-sub-menu :key="menu.path">
             <template #icon>
-              <component :is="getIcon(menu.meta?.icon)" />
+              <component :is="renderIcon(menu.meta?.icon)" />
             </template>
             <template #title>{{ menu.meta?.title }}</template>
             <a-menu-item
@@ -30,7 +30,7 @@
               @click="handleMenuClick(child.path)"
             >
               <template #icon v-if="child.meta?.icon">
-                <component :is="getIcon(child.meta.icon)" />
+                <component :is="renderIcon(child.meta.icon)" />
               </template>
               {{ child.meta?.title }}
             </a-menu-item>
@@ -40,7 +40,7 @@
         <template v-else>
           <a-menu-item :key="menu.path" @click="handleMenuClick(menu.path)">
             <template #icon v-if="menu.meta?.icon">
-              <component :is="getIcon(menu.meta.icon)" />
+              <component :is="renderIcon(menu.meta.icon)" />
             </template>
             <span>{{ menu.meta?.title }}</span>
           </a-menu-item>
@@ -51,53 +51,22 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore, usePermissionStore } from '@/store'
 import type { MenuItem } from '@/api/auth'
 import type { Key } from 'ant-design-vue/es/_util/type'
-import {
-  DashboardOutlined,
-  ShoppingOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  KeyOutlined,
-  MenuOutlined,
-  ShoppingCartOutlined,
-  AppstoreOutlined,
-  ToolOutlined,
-  OrderedListOutlined,
-  CustomerServiceOutlined,
-  SettingOutlined,
-  GiftOutlined
-} from '@ant-design/icons-vue'
+import IconProvider from '@/components/IconProvider.vue'
 
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
 const permissionStore = usePermissionStore()
 
-// 图标映射
-const iconMap = {
-  dashboard: DashboardOutlined,
-  setting: SettingOutlined,
-  shopping: ShoppingOutlined,
-  'file-text': FileTextOutlined,
-  user: TeamOutlined,
-  role: KeyOutlined,
-  menu: MenuOutlined,
-  'shopping-cart': ShoppingCartOutlined,
-  category: AppstoreOutlined,
-  spec: ToolOutlined,
-  list: OrderedListOutlined,
-  'after-sale': CustomerServiceOutlined,
-  gift: GiftOutlined
-} as const
-
-// 获取图标组件
-const getIcon = (iconName?: string) => {
-  if (!iconName) return null
-  return iconMap[iconName as keyof typeof iconMap] || null
+// 渲染图标
+const renderIcon = (icon?: string) => {
+  if (!icon) return null
+  return () => h(IconProvider, { name: icon })
 }
 
 // 菜单相关

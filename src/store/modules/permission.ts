@@ -40,6 +40,11 @@ export const findComponentByPath = (path: string): RouteComponent => {
   const modules = import.meta.glob('@/views/**/*.vue')
   const componentPath = `/src/views/${normalizedPath}.vue`
   
+  // 特殊处理消息中心路由
+  if (normalizedPath === 'message/index') {
+    return () => import('@/views/message/index.vue')
+  }
+  
   const matchedModule = modules[componentPath]
   if (!matchedModule) {
     console.error(`找不到组件: ${componentPath}`)
