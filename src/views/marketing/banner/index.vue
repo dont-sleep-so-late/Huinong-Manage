@@ -54,36 +54,37 @@
         :data-source="dataSource"
         :pagination="pagination"
         @change="handleTableChange"
+        row-key="id"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'image'">
+          <template v-if="column.key === 'imageUrl'">
             <a-image
               :width="100"
-              :src="record.image"
+              :src="record.imageUrl"
               :preview="true"
             />
           </template>
-          <template v-if="column.key === 'sort'">
+          <template v-if="column.key === 'sortOrder'">
             <a-input-number
-              v-model:value="record.sort"
+              v-model:value="record.sortOrder"
               :min="0"
               :max="999"
-              @change="(value) => handleSortChange(record.id, value)"
+              @change="(value) => handleSortChange(record.id, Number(value))"
             />
           </template>
           <template v-if="column.key === 'status'">
             <a-switch
               :checked="record.status === 1"
-              @change="(checked) => handleStatusChange(record.id, checked)"
+              @change="(checked) => handleStatusChange(record.id, Boolean(checked))"
             />
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" @click="handleView(record)">查看</a-button>
-              <a-button type="link" @click="handleEdit(record)">编辑</a-button>
+              <a-button type="link" @click="() => handleView(record)">查看</a-button>
+              <a-button type="link" @click="() => handleEdit(record)">编辑</a-button>
               <a-popconfirm
                 title="确定要删除这个轮播图吗？"
-                @confirm="handleDelete(record.id)"
+                @confirm="() => handleDelete(record.id)"
               >
                 <a-button type="link" danger>删除</a-button>
               </a-popconfirm>
@@ -115,41 +116,44 @@
             show-count
           />
         </a-form-item>
-        <a-form-item label="图片" name="image">
-          <a-upload
-            v-model:file-list="fileList"
-            list-type="picture-card"
-            :action="`${uploadUrl}/upload`"
-            :headers="uploadHeaders"
-            :before-upload="beforeUpload"
-            @change="handleImageChange"
-          >
-            <div v-if="fileList.length < 1">
-              <plus-outlined />
-              <div class="ant-upload-text">上传图片</div>
-            </div>
-          </a-upload>
+        <a-form-item label="图片" name="imageUrl">
+          <image-upload
+            v-model:value="form.imageUrl"
+            :max-size="2"
+            upload-text="上传轮播图"
+            alt="轮播图"
+            @change="handleImageUploaded"
+          />
           <div class="upload-tip">建议尺寸：750x350px，大小不超过2MB</div>
         </a-form-item>
-        <a-form-item label="链接" name="url">
+        <a-form-item label="链接" name="linkUrl">
           <a-input
-            v-model:value="form.url"
+            v-model:value="form.linkUrl"
             placeholder="请输入跳转链接"
             :maxLength="255"
             show-count
           />
         </a-form-item>
-        <a-form-item label="排序" name="sort">
+        <a-form-item label="排序" name="sortOrder">
           <a-input-number
-            v-model:value="form.sort"
+            v-model:value="form.sortOrder"
             :min="0"
             :max="999"
             style="width: 100%"
           />
           <div class="form-tip">数字越小越靠前，取值范围：0-999</div>
         </a-form-item>
+        <a-form-item label="备注" name="remark">
+          <a-textarea
+            v-model:value="form.remark"
+            placeholder="请输入备注信息"
+            :maxLength="200"
+            :auto-size="{ minRows: 2, maxRows: 6 }"
+            show-count
+          />
+        </a-form-item>
         <a-form-item label="状态" name="status">
-          <a-switch v-model:checked="form.status" />
+          <a-switch v-model:checked="statusChecked" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -164,10 +168,11 @@
         <a-descriptions-item label="ID">{{ detail.id }}</a-descriptions-item>
         <a-descriptions-item label="标题">{{ detail.title }}</a-descriptions-item>
         <a-descriptions-item label="图片">
-          <a-image :width="200" :src="detail.image" />
+          <a-image :width="200" :src="detail.imageUrl" />
         </a-descriptions-item>
-        <a-descriptions-item label="链接">{{ detail.url }}</a-descriptions-item>
-        <a-descriptions-item label="排序">{{ detail.sort }}</a-descriptions-item>
+        <a-descriptions-item label="链接">{{ detail.linkUrl }}</a-descriptions-item>
+        <a-descriptions-item label="排序">{{ detail.sortOrder }}</a-descriptions-item>
+        <a-descriptions-item label="备注">{{ detail.remark || '-' }}</a-descriptions-item>
         <a-descriptions-item label="状态">
           {{ detail.status === 1 ? '启用' : '禁用' }}
         </a-descriptions-item>
@@ -186,10 +191,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import type { ColumnType } from 'ant-design-vue/es/table'
+import ImageUpload from '@/components/ImageUpload'
 import {
   getBannerList,
   getBannerDetail,
@@ -203,12 +209,6 @@ import {
   type BannerForm
 } from '@/api/banner'
 
-// 上传相关
-const uploadUrl = import.meta.env.VITE_UPLOAD_URL
-const uploadHeaders = {
-  Authorization: `Bearer ${localStorage.getItem('token')}`
-}
-
 // 搜索表单
 const searchFormRef = ref()
 const searchForm = reactive<Partial<BannerQuery>>({
@@ -219,16 +219,20 @@ const searchForm = reactive<Partial<BannerQuery>>({
 // 表格数据
 const loading = ref(false)
 const dataSource = ref<Banner[]>([])
-const pagination = reactive<TablePaginationConfig>({
+const pagination = reactive({
   current: 1,
   pageSize: 10,
   total: 0,
   showSizeChanger: true,
   showQuickJumper: true,
   showTotal: (total: number) => `共 ${total} 条`
-})
+}) as TablePaginationConfig
 
-const columns = [
+// 计算当前页码和每页条数，确保不为undefined
+const currentPage = computed(() => pagination.current || 1)
+const pageSize = computed(() => pagination.pageSize || 10)
+
+const columns: ColumnType<Banner>[] = [
   {
     title: 'ID',
     dataIndex: 'id',
@@ -244,21 +248,21 @@ const columns = [
   },
   {
     title: '图片',
-    dataIndex: 'image',
-    key: 'image',
+    dataIndex: 'imageUrl',
+    key: 'imageUrl',
     width: 120
   },
   {
     title: '链接',
-    dataIndex: 'url',
-    key: 'url',
+    dataIndex: 'linkUrl',
+    key: 'linkUrl',
     width: 200,
     ellipsis: true
   },
   {
     title: '排序',
-    dataIndex: 'sort',
-    key: 'sort',
+    dataIndex: 'sortOrder',
+    key: 'sortOrder',
     width: 100
   },
   {
@@ -277,7 +281,7 @@ const columns = [
     title: '操作',
     key: 'action',
     width: 200,
-    fixed: 'right'
+    fixed: 'right' as const
   }
 ]
 
@@ -286,13 +290,14 @@ const modalVisible = ref(false)
 const modalLoading = ref(false)
 const modalTitle = ref('新增轮播图')
 const formRef = ref()
-const fileList = ref([])
+const statusChecked = ref(true)
 const form = reactive<BannerForm>({
   title: '',
-  image: '',
-  url: '',
-  sort: 0,
-  status: 1
+  imageUrl: '',
+  linkUrl: '',
+  sortOrder: 0,
+  status: 1,
+  remark: ''
 })
 
 const rules = {
@@ -300,30 +305,42 @@ const rules = {
     { required: true, message: '请输入轮播图标题' },
     { max: 50, message: '标题最多50个字符' }
   ],
-  image: [{ required: true, message: '请上传轮播图图片' }],
-  url: [
+  imageUrl: [{ required: true, message: '请上传轮播图图片' }],
+  linkUrl: [
     { required: true, message: '请输入跳转链接' },
     { max: 255, message: '链接最多255个字符' }
   ],
-  sort: [{ required: true, message: '请输入排序号' }]
+  sortOrder: [{ required: true, message: '请输入排序号' }]
 }
 
 // 详情
 const detailVisible = ref(false)
 const detail = ref<Banner>({} as Banner)
 
+// 监听状态开关变化
+watch(statusChecked, (val) => {
+  form.status = val ? 1 : 0
+})
+
+// 监听表单状态变化
+watch(() => form.status, (val) => {
+  statusChecked.value = val === 1
+})
+
 // 获取列表数据
 const fetchData = async () => {
   loading.value = true
   try {
     const params: BannerQuery = {
-      page: pagination.current!,
+      pageNum: pagination.current!,
       pageSize: pagination.pageSize!,
       ...searchForm
     }
     const res = await getBannerList(params)
-    dataSource.value = res.data
+    dataSource.value = res.records
     pagination.total = res.total
+    if (res.current) pagination.current = res.current
+    if (res.size) pagination.pageSize = res.size
   } catch (error) {
     console.error('获取轮播图列表失败:', error)
     message.error('获取轮播图列表失败')
@@ -352,13 +369,13 @@ const handleRefresh = () => {
 
 // 表格变化
 const handleTableChange = (pag: TablePaginationConfig) => {
-  pagination.current = pag.current
-  pagination.pageSize = pag.pageSize
+  pagination.current = pag.current || 1
+  pagination.pageSize = pag.pageSize || 10
   fetchData()
 }
 
 // 查看详情
-const handleView = async (record: Banner) => {
+const handleView = async (record: any) => {
   try {
     const res = await getBannerDetail(record.id)
     detail.value = res
@@ -373,29 +390,30 @@ const handleView = async (record: Banner) => {
 const handleAdd = () => {
   modalTitle.value = '新增轮播图'
   modalVisible.value = true
+  form.id = undefined
   form.title = ''
-  form.image = ''
-  form.url = ''
-  form.sort = 0
+  form.imageUrl = ''
+  form.linkUrl = ''
+  form.sortOrder = 0
   form.status = 1
-  fileList.value = []
+  form.remark = ''
 }
 
 // 编辑
-const handleEdit = async (record: Banner) => {
+const handleEdit = async (record: any) => {
   try {
     const res = await getBannerDetail(record.id)
     modalTitle.value = '编辑轮播图'
     modalVisible.value = true
-    Object.assign(form, res)
-    fileList.value = [
-      {
-        uid: '-1',
-        name: 'image.png',
-        status: 'done',
-        url: res.image
-      }
-    ]
+    Object.assign(form, {
+      id: res.id,
+      title: res.title,
+      imageUrl: res.imageUrl,
+      linkUrl: res.linkUrl,
+      sortOrder: res.sortOrder,
+      status: res.status,
+      remark: res.remark || ''
+    })
   } catch (error) {
     console.error('获取轮播图详情失败:', error)
     message.error('获取轮播图详情失败')
@@ -407,8 +425,8 @@ const handleDelete = async (id: number) => {
   try {
     await deleteBanner(id)
     message.success('删除成功')
-    if (dataSource.value.length === 1 && pagination.current! > 1) {
-      pagination.current--
+    if (dataSource.value.length === 1 && (pagination.current || 1) > 1) {
+      if (pagination.current) pagination.current--
     }
     fetchData()
   } catch (error) {
@@ -441,29 +459,10 @@ const handleSortChange = async (id: number, value: number) => {
   }
 }
 
-// 图片上传前校验
-const beforeUpload = (file: File) => {
-  const isImage = file.type.startsWith('image/')
-  if (!isImage) {
-    message.error('只能上传图片文件!')
-    return false
-  }
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isLt2M) {
-    message.error('图片必须小于2MB!')
-    return false
-  }
-  return true
-}
-
-// 图片变更
-const handleImageChange = (info: any) => {
-  if (info.file.status === 'done') {
-    form.image = info.file.response.url
-    message.success('图片上传成功')
-  } else if (info.file.status === 'error') {
-    message.error('图片上传失败')
-  }
+// 图片上传成功
+const handleImageUploaded = (url: string) => {
+  form.imageUrl = url
+  message.success('图片上传成功')
 }
 
 // 弹窗确认
@@ -475,7 +474,7 @@ const handleModalOk = async () => {
       await addBanner(form)
       message.success('新增成功')
     } else {
-      await updateBanner(form.id, form)
+      await updateBanner(form.id!, form)
       message.success('更新成功')
     }
     modalVisible.value = false
@@ -492,7 +491,6 @@ const handleModalOk = async () => {
 const handleModalCancel = () => {
   modalVisible.value = false
   formRef.value?.resetFields()
-  fileList.value = []
 }
 
 onMounted(() => {
