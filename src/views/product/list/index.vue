@@ -67,59 +67,72 @@
 
     <!-- 表格 -->
     <a-card class="table-card" :bordered="false">
-      <template #extra>
+      <div class="table-operations">
         <a-space>
           <a-button type="primary" @click="handleAdd">
             <template #icon><plus-outlined /></template>
             新增
+          </a-button>
+          <a-button @click="handleBatchDelete" :disabled="selectedRowKeys.length === 0">
+            <template #icon><delete-outlined /></template>
+            批量删除
+          </a-button>
+          <a-button @click="handleBatchStatus(1)" :disabled="selectedRowKeys.length === 0">
+            <template #icon><check-outlined /></template>
+            批量上架
+          </a-button>
+          <a-button @click="handleBatchStatus(0)" :disabled="selectedRowKeys.length === 0">
+            <template #icon><stop-outlined /></template>
+            批量下架
           </a-button>
           <a-button @click="handleExport">
             <template #icon><export-outlined /></template>
             导出
           </a-button>
         </a-space>
-      </template>
+      </div>
 
       <a-table
         :columns="columns"
-        :data-source="tableData"
+        :data-source="dataSource"
         :loading="loading"
         :pagination="pagination"
+        :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
+        row-key="id"
         @change="handleTableChange"
       >
-        <template #bodyCell="{ column, text, record }">
-          <template v-if="column.key === 'image'">
-            <img :src="text" alt="商品图片" class="product-image" />
+        <template #bodyCell="{ column, record }">
+          <!-- 商品图片 -->
+          <template v-if="column.dataIndex === 'images'">
+            <a-image
+              :width="50"
+              :src="record.images && record.images.length > 0 ? record.images[0] : ''"
+              :fallback="'https://via.placeholder.com/50'"
+            />
           </template>
-          
-          <template v-else-if="column.key === 'price'">
-            ¥{{ text.toFixed(2) }}
-          </template>
-          
-          <template v-else-if="column.key === 'status'">
-            <a-tag :color="text === 1 ? 'success' : 'error'">
-              {{ text === 1 ? '上架' : '下架' }}
+
+          <!-- 商品状态 -->
+          <template v-if="column.dataIndex === 'status'">
+            <a-tag :color="record.status === 1 ? 'green' : 'red'">
+              {{ record.status === 1 ? '上架' : '下架' }}
             </a-tag>
           </template>
-          
-          <template v-else-if="column.key === 'action'">
+
+          <!-- 操作 -->
+          <template v-if="column.dataIndex === 'action'">
             <a-space>
               <a @click="handleEdit(record)">编辑</a>
-              <a-divider type="vertical" />
               <a @click="handleSpecs(record)">规格</a>
-              <a-divider type="vertical" />
-              <a-popconfirm
-                :title="record.status === 1 ? '确定要下架该商品吗？' : '确定要上架该商品吗？'"
-                @confirm="handleToggleStatus(record)"
-              >
-                <a>{{ record.status === 1 ? '下架' : '上架' }}</a>
-              </a-popconfirm>
-              <a-divider type="vertical" />
+              <a @click="handleToggleStatus(record)">
+                {{ record.status === 1 ? '下架' : '上架' }}
+              </a>
               <a-popconfirm
                 title="确定要删除该商品吗？"
+                ok-text="确定"
+                cancel-text="取消"
                 @confirm="handleDelete(record)"
               >
-                <a class="text-danger">删除</a>
+                <a class="danger-link">删除</a>
               </a-popconfirm>
             </a-space>
           </template>
@@ -138,7 +151,7 @@
       <a-form
         ref="formRef"
         :model="formData"
-        :rules="formRules"
+        :rules="rules"
         :label-col="{ span: 4 }"
         :wrapper-col="{ span: 18 }"
       >
@@ -161,17 +174,14 @@
           />
         </a-form-item>
         <a-form-item label="商品图片" name="images">
-          <a-upload
-            v-model:file-list="fileList"
-            list-type="picture-card"
-            :before-upload="beforeUpload"
-            @change="handleChange"
-          >
-            <div v-if="fileList.length < 5">
-              <plus-outlined />
-              <div style="margin-top: 8px">上传</div>
-            </div>
-          </a-upload>
+          <image-upload
+            v-model:value="formData.images[0]"
+            :max-size="2"
+            upload-text="上传主图"
+            alt="商品主图"
+            @change="handleImageUploaded"
+          />
+          <div class="upload-tip">建议尺寸：800x800px，大小不超过2MB</div>
         </a-form-item>
         <a-form-item label="商品价格" name="price">
           <a-input-number
@@ -216,72 +226,57 @@
 
     <!-- 规格弹窗 -->
     <a-modal
-      v-model:open="specsVisible"
+      v-model:visible="specsVisible"
       title="商品规格"
-      width="800px"
+      width="600px"
       @ok="handleSpecsOk"
       @cancel="handleSpecsCancel"
     >
-      <a-form
-        ref="specsFormRef"
-        :model="specsForm"
-        :label-col="{ span: 4 }"
-        :wrapper-col="{ span: 18 }"
-      >
-        <a-form-item
-          v-for="spec in productSpecs"
-          :key="spec.id"
-          :label="spec.name"
-        >
-          <a-checkbox-group v-model:value="specsForm[spec.id]">
-            <a-checkbox
-              v-for="value in spec.values"
-              :key="value"
-              :value="value"
-            >
-              {{ value }}
-            </a-checkbox>
-          </a-checkbox-group>
-        </a-form-item>
-      </a-form>
+      <div v-for="(specs, specId) in specsOptions" :key="specId" class="spec-group">
+        <div class="spec-title">{{ specNames[specId] }}</div>
+        <a-checkbox-group v-model:value="specsForm[specId]">
+          <a-checkbox
+            v-for="spec in specs"
+            :key="spec.id"
+            :value="spec.id"
+          >
+            {{ spec.name }}
+          </a-checkbox>
+        </a-checkbox-group>
+      </div>
     </a-modal>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import {
   SearchOutlined,
   RedoOutlined,
   PlusOutlined,
-  ExportOutlined
+  ExportOutlined,
+  DeleteOutlined,
+  CheckOutlined,
+  StopOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import type { UploadChangeParam } from 'ant-design-vue'
-
-interface ProductInfo {
-  id: number
-  categoryId: number[]
-  name: string
-  images: string[]
-  price: number
-  stock: number
-  description: string
-  sort: number
-  status: number
-  createTime: string
-}
-
-interface SearchForm {
-  name?: string
-  categoryId?: number[]
-  status?: number
-  minPrice?: number
-  maxPrice?: number
-  pageNum: number
-  pageSize: number
-}
+import type { Key } from 'ant-design-vue/es/table/interface'
+import ImageUpload from '@/components/ImageUpload'
+import {
+  getProductList,
+  getProductCount,
+  getProductDetail,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  batchDeleteProducts,
+  updateProductStatus,
+  batchUpdateProductStatus,
+  getCategories,
+  type Product,
+  type ProductQuery
+} from '@/api/product'
 
 interface SpecInfo {
   id: number
@@ -333,67 +328,47 @@ const columns = [
 ]
 
 // 商品分类选项
-const categoryOptions = ref([
-  {
-    id: 1,
-    name: '蔬菜水果',
-    children: [
-      {
-        id: 2,
-        name: '新鲜蔬菜'
-      },
-      {
-        id: 3,
-        name: '新鲜水果'
-      }
-    ]
-  },
-  {
-    id: 4,
-    name: '肉禽蛋品',
-    children: [
-      {
-        id: 5,
-        name: '猪肉'
-      },
-      {
-        id: 6,
-        name: '牛肉'
-      }
-    ]
-  }
-])
+const categoryOptions = ref<any[]>([])
 
 // 搜索表单数据
-const searchForm = reactive<SearchForm>({
+const searchForm = reactive<Partial<ProductQuery>>({
   name: '',
   categoryId: undefined,
   status: undefined,
   minPrice: undefined,
   maxPrice: undefined,
   pageNum: 1,
-  pageSize: 10
+  pageSize: 10,
+  orderBy: 'createTime',
+  orderType: 'desc'
 })
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<ProductInfo[]>([])
+const dataSource = ref<Product[]>([])
 const pagination = reactive<TablePaginationConfig>({
   total: 0,
   current: 1,
   pageSize: 10,
   showSizeChanger: true,
-  showQuickJumper: true
+  showQuickJumper: true,
+  showTotal: (total: number) => `共 ${total} 条`
 })
+
+// 选择行
+const selectedRowKeys = ref<Key[]>([])
+const onSelectChange = (keys: Key[]) => {
+  selectedRowKeys.value = keys
+}
 
 // 新增/编辑弹窗
 const modalVisible = ref(false)
 const modalTitle = ref('新增商品')
 const formRef = ref()
-const formData = reactive<Partial<ProductInfo>>({
+const formData = reactive<Partial<Product>>({
   categoryId: [],
   name: '',
-  images: [],
+  images: [''],
   price: undefined,
   stock: undefined,
   description: '',
@@ -402,69 +377,35 @@ const formData = reactive<Partial<ProductInfo>>({
 })
 
 // 表单验证规则
-const formRules = {
-  categoryId: [
-    { required: true, message: '请选择商品分类' }
-  ],
-  name: [
-    { required: true, message: '请输入商品名称' }
-  ],
-  images: [
-    { required: true, message: '请上传商品图片' }
-  ],
-  price: [
-    { required: true, message: '请输入商品价格' }
-  ],
-  stock: [
-    { required: true, message: '请输入商品库存' }
-  ],
-  description: [
-    { required: true, message: '请输入商品描述' }
-  ]
-}
-
-// 图片上传相关
-const fileList = ref([])
-const beforeUpload = (file: File) => {
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isJpgOrPng) {
-    message.error('只能上传JPG/PNG格式的图片!')
-  }
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isLt2M) {
-    message.error('图片大小不能超过2MB!')
-  }
-  return isJpgOrPng && isLt2M
-}
-
-const handleChange = (info: UploadChangeParam) => {
-  if (info.file.status === 'uploading') {
-    loading.value = true
-    return
-  }
-  if (info.file.status === 'done') {
-    // TODO: 处理上传成功后的逻辑
-    formData.images = info.fileList.map(file => file.response.url)
-    loading.value = false
-  }
+const rules = {
+  categoryId: [{ required: true, message: '请选择商品分类' }],
+  name: [{ required: true, message: '请输入商品名称' }],
+  price: [{ required: true, message: '请输入商品价格' }],
+  stock: [{ required: true, message: '请输入商品库存' }]
 }
 
 // 规格弹窗
 const specsVisible = ref(false)
-const specsFormRef = ref()
-const specsForm = reactive<Record<number, string[]>>({})
-const productSpecs = ref<SpecInfo[]>([
-  {
-    id: 1,
-    name: '重量',
-    values: ['500g', '1kg', '2kg']
-  },
-  {
-    id: 2,
-    name: '包装',
-    values: ['盒装', '袋装']
-  }
-])
+const specsOptions = ref({
+  1: [
+    { id: 1, name: '红色' },
+    { id: 2, name: '蓝色' },
+    { id: 3, name: '黑色' }
+  ],
+  2: [
+    { id: 4, name: 'S' },
+    { id: 5, name: 'M' },
+    { id: 6, name: 'L' }
+  ]
+})
+const specNames = {
+  1: '颜色',
+  2: '尺寸'
+}
+const specsForm = reactive<Record<number, number[]>>({
+  1: [],
+  2: []
+})
 
 // 查询
 const handleSearch = () => {
@@ -493,53 +434,63 @@ const handleAdd = () => {
   formData.id = undefined
   formData.categoryId = []
   formData.name = ''
-  formData.images = []
+  formData.images = ['']
   formData.price = undefined
   formData.stock = undefined
   formData.description = ''
   formData.sort = 0
   formData.status = 1
-  fileList.value = []
   modalVisible.value = true
 }
 
 // 编辑
-const handleEdit = (record: ProductInfo) => {
-  modalTitle.value = '编辑商品'
-  Object.assign(formData, record)
-  fileList.value = record.images.map((url, index) => ({
-    uid: `-${index}`,
-    name: `image-${index}.png`,
-    status: 'done',
-    url
-  }))
-  modalVisible.value = true
+const handleEdit = async (record: Product) => {
+  try {
+    const res = await getProductDetail(record.id)
+    modalTitle.value = '编辑商品'
+    formData.id = res.id
+    formData.categoryId = res.categoryId
+    formData.name = res.name
+    formData.images = res.images
+    formData.price = res.price
+    formData.stock = res.stock
+    formData.description = res.description
+    formData.sort = res.sort
+    formData.status = res.status
+    modalVisible.value = true
+  } catch (error) {
+    console.error('获取商品详情失败:', error)
+    message.error('获取商品详情失败')
+  }
 }
 
 // 规格
-const handleSpecs = (record: ProductInfo) => {
+const handleSpecs = (record: Product) => {
   // TODO: 获取商品规格
   specsVisible.value = true
 }
 
 // 切换状态
-const handleToggleStatus = async (record: ProductInfo) => {
+const handleToggleStatus = async (record: Product) => {
   try {
-    // TODO: 调用切换状态API
-    message.success(record.status === 1 ? '下架成功' : '上架成功')
+    const newStatus = record.status === 1 ? 0 : 1
+    await updateProductStatus(record.id, newStatus)
+    message.success(newStatus === 1 ? '上架成功' : '下架成功')
     fetchData()
   } catch (error) {
+    console.error('更新商品状态失败:', error)
     message.error('操作失败')
   }
 }
 
 // 删除
-const handleDelete = async (record: ProductInfo) => {
+const handleDelete = async (record: Product) => {
   try {
-    // TODO: 调用删除API
+    await deleteProduct(record.id)
     message.success('删除成功')
     fetchData()
   } catch (error) {
+    console.error('删除商品失败:', error)
     message.error('删除失败')
   }
 }
@@ -548,11 +499,18 @@ const handleDelete = async (record: ProductInfo) => {
 const handleModalOk = () => {
   formRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用保存API
-      message.success('保存成功')
+      if (modalTitle.value === '新增商品') {
+        await addProduct(formData as Omit<Product, 'id' | 'createTime' | 'updateTime' | 'categoryName' | 'sellerId' | 'sellerName'>)
+        message.success('添加成功')
+      } else {
+        const { id, ...updateData } = formData
+        await updateProduct(id!, updateData as Partial<Product>)
+        message.success('更新成功')
+      }
       modalVisible.value = false
       fetchData()
     } catch (error) {
+      console.error('保存商品失败:', error)
       message.error('保存失败')
     }
   })
@@ -592,27 +550,85 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    tableData.value = [
-      {
-        id: 1,
-        categoryId: [1, 2],
-        name: '新鲜胡萝卜',
-        images: ['https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png'],
-        price: 2.5,
-        stock: 1000,
-        description: '新鲜胡萝卜，农场直供',
-        sort: 1,
-        status: 1,
-        createTime: '2024-01-01 00:00:00'
-      }
-    ]
-    pagination.total = 1
+    const params: ProductQuery = {
+      pageNum: pagination.current || 1,
+      pageSize: pagination.pageSize || 10,
+      name: searchForm.name,
+      categoryId: searchForm.categoryId,
+      status: searchForm.status,
+      minPrice: searchForm.minPrice,
+      maxPrice: searchForm.maxPrice,
+      orderBy: searchForm.orderBy,
+      orderType: searchForm.orderType
+    }
+    
+    const [list, total] = await Promise.all([
+      getProductList(params),
+      getProductCount(params)
+    ])
+    
+    dataSource.value = list
+    pagination.total = total
   } catch (error) {
+    console.error('获取商品列表失败:', error)
     message.error('获取数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 获取商品分类
+const fetchCategories = async () => {
+  try {
+    const res = await getCategories()
+    categoryOptions.value = res
+  } catch (error) {
+    console.error('获取商品分类失败:', error)
+    message.error('获取商品分类失败')
+  }
+}
+
+// 图片上传成功
+const handleImageUploaded = (url: string) => {
+  if (!formData.images) {
+    formData.images = ['']
+  }
+  formData.images[0] = url
+}
+
+// 批量删除
+const handleBatchDelete = async () => {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要删除的商品')
+    return
+  }
+  
+  try {
+    await batchDeleteProducts(selectedRowKeys.value.map(key => Number(key)))
+    message.success('批量删除成功')
+    selectedRowKeys.value = []
+    fetchData()
+  } catch (error) {
+    console.error('批量删除商品失败:', error)
+    message.error('批量删除失败')
+  }
+}
+
+// 批量更新状态
+const handleBatchStatus = async (status: 0 | 1) => {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请选择要操作的商品')
+    return
+  }
+  
+  try {
+    await batchUpdateProductStatus(selectedRowKeys.value.map(key => Number(key)), status)
+    message.success(status === 1 ? '批量上架成功' : '批量下架成功')
+    selectedRowKeys.value = []
+    fetchData()
+  } catch (error) {
+    console.error('批量更新商品状态失败:', error)
+    message.error('批量操作失败')
   }
 }
 

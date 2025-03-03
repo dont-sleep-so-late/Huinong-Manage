@@ -57,6 +57,7 @@ declare module 'vue' {
     ATimelineItem: typeof import('ant-design-vue/es')['TimelineItem']
     ATree: typeof import('ant-design-vue/es')['Tree']
     ATreeSelect: typeof import('ant-design-vue/es')['TreeSelect']
+    AuditNotification: typeof import('./src/components/AuditNotification.vue')['default']
     AUpload: typeof import('ant-design-vue/es')['Upload']
     ExportOutlined: typeof import('@ant-design/icons-vue')['ExportOutlined']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']

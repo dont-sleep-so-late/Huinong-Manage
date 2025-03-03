@@ -36,9 +36,9 @@
             </a-form-item>
           </a-col>
           <a-col :span="6">
-            <a-form-item label="审核状态" name="status">
+            <a-form-item label="审核状态" name="auditStatus">
               <a-select
-                v-model:value="searchForm.status"
+                v-model:value="searchForm.auditStatus"
                 placeholder="请选择审核状态"
                 allow-clear
               >
@@ -176,9 +176,9 @@
         <a-descriptions-item label="商品描述" :span="2">
           {{ detail.description }}
         </a-descriptions-item>
-        <template v-if="detail.auditReason">
+        <template v-if="detail.auditRemark">
           <a-descriptions-item label="审核意见" :span="2">
-            {{ detail.auditReason }}
+            {{ detail.auditRemark }}
           </a-descriptions-item>
         </template>
       </a-descriptions>
@@ -201,24 +201,24 @@
         :rules="auditRules"
         layout="vertical"
       >
-        <a-form-item label="审核结果" name="status">
-          <a-radio-group v-model:value="auditForm.status">
+        <a-form-item label="审核结果" name="auditStatus">
+          <a-radio-group v-model:value="auditForm.auditStatus">
             <a-radio :value="1">通过</a-radio>
             <a-radio :value="2">拒绝</a-radio>
           </a-radio-group>
         </a-form-item>
         <a-form-item
           label="审核意见"
-          name="auditReason"
+          name="auditRemark"
           :rules="[
-            { required: auditForm.status === 2, message: '请输入审核意见' }
+            { required: auditForm.auditStatus === 2, message: '请输入审核意见' }
           ]"
         >
           <a-textarea
-            v-model:value="auditForm.auditReason"
+            v-model:value="auditForm.auditRemark"
             :rows="4"
             placeholder="请输入审核意见"
-            :maxlength="500"
+            :maxlength="200"
             show-count
           />
         </a-form-item>
@@ -228,56 +228,40 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, h } from 'vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
+import { message, Image } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
 import type { FormInstance } from 'ant-design-vue'
-import type { TableRowSelection } from 'ant-design-vue'
+import type { TableRowSelection } from 'ant-design-vue/es/table/interface'
+import type { Key } from 'ant-design-vue/es/table/interface'
+import {
+  getPendingAuditProducts,
+  getProductDetail,
+  auditProduct,
+  batchAuditProducts,
+  getCategories,
+  type Product,
+  type AuditParams
+} from '@/api/product'
 
-interface Category {
-  id: number
-  name: string
-}
-
-interface Product {
-  id: number
-  name: string
-  categoryId: number
-  categoryName: string
-  price: number
-  originalPrice: number
-  description: string
-  images: string[]
-  status: number
-  sellerName: string
-  createTime: string
-  updateTime: string
-  auditReason?: string
-}
-
-interface ProductQuery {
-  page: number
-  pageSize: number
-  name?: string
-  categoryId?: number
-  status?: number
-  startTime?: string
-  endTime?: string
-}
-
-interface AuditParams {
-  id: number
-  status: number
-  auditReason: string
+// 定义本地审核查询接口
+interface LocalAuditProductQuery {
+  pageNum: number;
+  pageSize: number;
+  name?: string;
+  categoryId?: number;
+  auditStatus?: 0 | 1 | 2;
+  startTime?: string;
+  endTime?: string;
 }
 
 // 搜索表单
 const searchFormRef = ref<FormInstance>()
-const searchForm = reactive<Partial<ProductQuery>>({
+const searchForm = reactive<Partial<LocalAuditProductQuery>>({
   name: undefined,
   categoryId: undefined,
-  status: undefined
+  auditStatus: 0 // 默认查询待审核
 })
 const timeRange = ref<[Dayjs, Dayjs]>()
 
@@ -295,6 +279,19 @@ const pagination = reactive<TablePaginationConfig>({
 
 // 表格列定义
 const columns = [
+  {
+    title: '商品图片',
+    dataIndex: 'images',
+    key: 'image',
+    width: 80,
+    customRender: ({ record }: { record: Product }) => {
+      return h(Image, {
+        width: 50,
+        src: record.images && record.images.length > 0 ? record.images[0] : '',
+        fallback: "https://via.placeholder.com/50"
+      })
+    }
+  },
   {
     title: '商品名称',
     dataIndex: 'name',
@@ -342,16 +339,16 @@ const columns = [
 ]
 
 // 表格选择
-const selectedRowKeys = ref<number[]>([])
+const selectedRowKeys = ref<Key[]>([])
 const rowSelection = {
   selectedRowKeys: selectedRowKeys.value,
-  onChange: (keys: number[]) => {
+  onChange: (keys: Key[]) => {
     selectedRowKeys.value = keys
   }
-} as const
+}
 
 // 商品分类
-const categories = ref<Category[]>([])
+const categories = ref<any[]>([])
 
 // 详情弹窗
 const detailVisible = ref(false)
@@ -361,13 +358,13 @@ const detail = ref<Partial<Product>>({})
 const auditVisible = ref(false)
 const auditLoading = ref(false)
 const auditFormRef = ref<FormInstance>()
-const auditForm = reactive<AuditParams>({
+const auditForm = reactive({
   id: 0,
-  status: 1,
-  auditReason: ''
+  auditStatus: 1,
+  auditRemark: ''
 })
 const auditRules = {
-  status: [{ required: true, message: '请选择审核结果' }]
+  auditStatus: [{ required: true, message: '请选择审核结果' }]
 }
 const isMultiple = ref(false)
 
@@ -375,8 +372,8 @@ const isMultiple = ref(false)
 const fetchData = async () => {
   loading.value = true
   try {
-    const params: ProductQuery = {
-      page: pagination.current as number || 1,
+    const params: LocalAuditProductQuery = {
+      pageNum: pagination.current as number || 1,
       pageSize: pagination.pageSize as number || 10,
       ...searchForm
     }
@@ -384,32 +381,10 @@ const fetchData = async () => {
       params.startTime = timeRange.value[0].format('YYYY-MM-DD HH:mm:ss')
       params.endTime = timeRange.value[1].format('YYYY-MM-DD HH:mm:ss')
     }
-    const res = await fetch('/api/products', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(params)
-    })
-    const data = await res.json()
-    if (data.data && Array.isArray(data.data)) {
-      dataSource.value = data.data.map((item: any): Product => ({
-        id: Number(item.id),
-        name: String(item.name),
-        categoryId: Number(item.categoryId),
-        categoryName: String(item.categoryName),
-        price: Number(item.price),
-        originalPrice: Number(item.originalPrice),
-        description: String(item.description),
-        images: Array.isArray(item.images) ? item.images : [],
-        status: Number(item.status),
-        sellerName: String(item.sellerName),
-        createTime: String(item.createTime),
-        updateTime: String(item.updateTime),
-        auditReason: item.auditReason ? String(item.auditReason) : undefined
-      }))
-    }
-    pagination.total = Number(data.total)
+    
+    const res = await getPendingAuditProducts(params)
+    dataSource.value = res.records
+    pagination.total = res.total
   } catch (error) {
     console.error('获取商品列表失败:', error)
     message.error('获取商品列表失败')
@@ -421,9 +396,8 @@ const fetchData = async () => {
 // 获取商品分类
 const fetchCategories = async () => {
   try {
-    const res = await fetch('/api/categories')
-    const data = await res.json()
-    categories.value = data.data
+    const res = await getCategories()
+    categories.value = res
   } catch (error) {
     console.error('获取商品分类失败:', error)
     message.error('获取商品分类失败')
@@ -459,26 +433,8 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 // 查看详情
 const handleView = async (record: Product) => {
   try {
-    const res = await fetch(`/api/products/${record.id}`)
-    const data = await res.json()
-    if (data.data) {
-      const item = data.data
-      detail.value = {
-        id: Number(item.id),
-        name: String(item.name),
-        categoryId: Number(item.categoryId),
-        categoryName: String(item.categoryName),
-        price: Number(item.price),
-        originalPrice: Number(item.originalPrice),
-        description: String(item.description),
-        images: Array.isArray(item.images) ? item.images : [],
-        status: Number(item.status),
-        sellerName: String(item.sellerName),
-        createTime: String(item.createTime),
-        updateTime: String(item.updateTime),
-        auditReason: item.auditReason ? String(item.auditReason) : undefined
-      }
-    }
+    const res = await getProductDetail(record.id)
+    detail.value = res
     detailVisible.value = true
   } catch (error) {
     console.error('获取商品详情失败:', error)
@@ -490,24 +446,24 @@ const handleView = async (record: Product) => {
 const handleAudit = (record: Product) => {
   isMultiple.value = false
   auditForm.id = record.id
-  auditForm.status = 1
-  auditForm.auditReason = ''
+  auditForm.auditStatus = 1
+  auditForm.auditRemark = ''
   auditVisible.value = true
 }
 
 // 批量通过
 const handleBatchPass = () => {
   isMultiple.value = true
-  auditForm.status = 1
-  auditForm.auditReason = ''
+  auditForm.auditStatus = 1
+  auditForm.auditRemark = ''
   auditVisible.value = true
 }
 
 // 批量拒绝
 const handleBatchReject = () => {
   isMultiple.value = true
-  auditForm.status = 2
-  auditForm.auditReason = ''
+  auditForm.auditStatus = 2
+  auditForm.auditRemark = ''
   auditVisible.value = true
 }
 
@@ -519,29 +475,18 @@ const handleAuditSubmit = async () => {
 
     if (isMultiple.value) {
       // 批量审核
-      await fetch('/api/products/batch-audit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ids: selectedRowKeys.value,
-          status: auditForm.status,
-          auditReason: auditForm.auditReason
-        })
+      await batchAuditProducts({
+        ids: selectedRowKeys.value.map(key => Number(key)),
+        auditStatus: auditForm.auditStatus as 1 | 2,
+        auditRemark: auditForm.auditRemark
       })
       message.success('批量审核成功')
     } else {
       // 单个审核
-      await fetch(`/api/products/${auditForm.id}/audit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: auditForm.status,
-          auditReason: auditForm.auditReason
-        })
+      await auditProduct({
+        id: auditForm.id,
+        status: auditForm.auditStatus as 1 | 2,
+        auditReason: auditForm.auditRemark
       })
       message.success('审核成功')
     }
@@ -568,8 +513,7 @@ const getStatusText = (status: number) => {
   const map: Record<number, string> = {
     0: '待审核',
     1: '已通过',
-    2: '已拒绝',
-    3: '已下架'
+    2: '已拒绝'
   }
   return map[status] || '未知'
 }
@@ -579,8 +523,7 @@ const getStatusColor = (status: number) => {
   const map: Record<number, string> = {
     0: 'warning',
     1: 'success',
-    2: 'error',
-    3: 'default'
+    2: 'error'
   }
   return map[status] || 'default'
 }
@@ -594,6 +537,10 @@ onMounted(() => {
 <style lang="less" scoped>
 .product-audit {
   .general-card {
+    margin-bottom: 16px;
+  }
+  
+  .table-operations {
     margin-bottom: 16px;
   }
 }

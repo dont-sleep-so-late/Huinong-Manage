@@ -161,6 +161,9 @@
       </a-col>
     </a-row>
   </div>
+  <div style="width: 100%; height: 100%" v-else> 
+    <iframe src="https://ncpscxx.moa.gov.cn" width="100%" height="100%"></iframe>
+  </div>
 </template>
 
 <script lang="ts" setup>

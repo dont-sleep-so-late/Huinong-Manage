@@ -22,6 +22,9 @@
     </a-breadcrumb>
 
     <div class="header-right">
+      <!-- 审核通知 -->
+      <AuditNotification />
+      
       <!-- 全屏按钮 -->
       <a-button type="link" @click="toggleFullscreen">
         <fullscreen-outlined v-if="!isFullscreen" />
@@ -71,6 +74,7 @@ import {
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useAppStore, useUserStore } from '@/store'
+import AuditNotification from '@/components/AuditNotification.vue'
 
 const router = useRouter()
 const route = useRoute()
