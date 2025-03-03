@@ -58,9 +58,14 @@ declare module 'vue' {
     ATree: typeof import('ant-design-vue/es')['Tree']
     ATreeSelect: typeof import('ant-design-vue/es')['TreeSelect']
     AUpload: typeof import('ant-design-vue/es')['Upload']
+    ExportOutlined: typeof import('@ant-design/icons-vue')['ExportOutlined']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    ImageUpload: typeof import('./src/components/ImageUpload/ImageUpload.vue')['default']
     NotFound: typeof import('./src/components/NotFound.vue')['default']
+    PlusOutlined: typeof import('@ant-design/icons-vue')['PlusOutlined']
+    RedoOutlined: typeof import('@ant-design/icons-vue')['RedoOutlined']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchOutlined: typeof import('@ant-design/icons-vue')['SearchOutlined']
   }
 }

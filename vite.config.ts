@@ -42,6 +42,11 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/action': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/action/, '')
       }
     }
   },

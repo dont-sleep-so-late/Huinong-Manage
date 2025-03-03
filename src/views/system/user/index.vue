@@ -39,9 +39,10 @@
         </a-form-item>
         <a-form-item label="注册时间">
           <a-range-picker
-            v-model:value="searchForm.createTime"
+            v-model:value="searchForm.createTimeRange"
             :show-time="{ format: 'HH:mm:ss' }"
             format="YYYY-MM-DD HH:mm:ss"
+            @change="handleDateRangeChange"
           />
         </a-form-item>
         <a-form-item>
@@ -181,19 +182,13 @@
           />
         </a-form-item>
         <a-form-item label="头像" name="avatar">
-          <a-upload
-            v-model:file-list="fileList"
-            list-type="picture-card"
-            :show-upload-list="false"
-            :before-upload="beforeUpload"
-            @change="handleChange"
-          >
-            <img v-if="formData.avatar" :src="formData.avatar" alt="头像" style="width: 100%" />
-            <div v-else>
-              <plus-outlined />
-              <div style="margin-top: 8px">上传</div>
-            </div>
-          </a-upload>
+          <image-upload
+            v-model:value="formData.avatar"
+            :max-size="2"
+            upload-text="上传头像"
+            alt="用户头像"
+            @change="handleAvatarChange"
+          />
         </a-form-item>
         <a-form-item v-if="formData.id" label="状态" name="status">
           <a-radio-group v-model:value="formData.status">
@@ -217,19 +212,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, h } from 'vue'
 import type { FormInstance } from 'ant-design-vue'
-import {
-  SearchOutlined,
-  RedoOutlined,
-  PlusOutlined,
-  ExportOutlined
-} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
-import type { UploadChangeParam, UploadFile } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { Dayjs } from 'dayjs'
+import ImageUpload from '@/components/ImageUpload'
 import {
   getUserList,
   createUser,
@@ -250,12 +239,14 @@ interface PasswordForm {
 }
 
 // 扩展用户表单类型
-interface UserFormData extends Partial<UserInfo> {
+interface UserFormData extends Partial<Omit<UserInfo, 'nickname' | 'email'>> {
   password?: string
+  nickname?: string
+  email?: string
 }
 
 // 表格列定义
-const columns: ColumnsType<UserInfo> = [
+const columns = [
   {
     title: '用户名',
     dataIndex: 'username',
@@ -306,7 +297,7 @@ const columns: ColumnsType<UserInfo> = [
     key: 'action',
     width: 280
   }
-]
+] as const
 
 // 状态选项
 const statusOptions = [
@@ -328,7 +319,8 @@ const searchForm = reactive<UserQuery>({
   status: undefined,
   role: undefined,
   pageNum: 1,
-  pageSize: 10
+  pageSize: 10,
+  createTimeRange: undefined
 })
 
 // 处理状态选择
@@ -339,6 +331,11 @@ const handleStatusChange = (value: SelectValue) => {
 // 处理角色选择
 const handleRoleChange = (value: SelectValue) => {
   searchForm.role = value === undefined ? undefined : String(value)
+}
+
+// 处理日期范围变化
+const handleDateRangeChange = (value: [Dayjs, Dayjs] | [string, string], dateStrings: [string, string]) => {
+  searchForm.createTimeRange = dateStrings
 }
 
 // 表格数据
@@ -356,7 +353,6 @@ const pagination = reactive<TablePaginationConfig>({
 const modalVisible = ref(false)
 const modalTitle = ref('新增用户')
 const formRef = ref<FormInstance>()
-const fileList = ref<UploadFile[]>([])
 const formData = reactive<UserFormData>({
   username: '',
   password: '',
@@ -395,7 +391,11 @@ const formRules = {
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱' }
+    { validator: async (_rule: any, value: string) => {
+      if (value && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+        throw new Error('请输入正确的邮箱')
+      }
+    }}
   ],
   status: [
     { required: true, message: '请选择状态' }
@@ -420,28 +420,9 @@ const passwordRules = {
   ]
 }
 
-// 图片上传相关
-const handleChange = async (info: UploadChangeParam) => {
-  if (info.file.status === 'uploading') {
-    loading.value = true
-    return
-  }
-  if (info.file.status === 'done') {
-    formData.avatar = info.file.response.url
-    loading.value = false
-  }
-}
-
-const beforeUpload = (file: File) => {
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isJpgOrPng) {
-    message.error('只能上传JPG/PNG格式的图片!')
-  }
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isLt2M) {
-    message.error('图片大小不能超过2MB!')
-  }
-  return isJpgOrPng && isLt2M
+// 头像上传回调
+const handleAvatarChange = (url: string) => {
+  formData.avatar = url
 }
 
 // 查询
@@ -456,6 +437,7 @@ const handleReset = () => {
   searchForm.phone = ''
   searchForm.status = undefined
   searchForm.role = undefined
+  searchForm.createTimeRange = undefined
   handleSearch()
 }
 
@@ -476,7 +458,6 @@ const handleAdd = () => {
   formData.avatar = ''
   formData.status = 1
   formData.role = 'user'
-  fileList.value = []
   modalVisible.value = true
 }
 
@@ -484,14 +465,6 @@ const handleAdd = () => {
 const handleEdit = (record: UserInfo) => {
   modalTitle.value = '编辑用户'
   Object.assign(formData, record)
-  fileList.value = record.avatar ? [
-    {
-      uid: '-1',
-      name: 'avatar.png',
-      status: 'done',
-      url: record.avatar
-    }
-  ] : []
   modalVisible.value = true
 }
 
@@ -538,7 +511,7 @@ const handleModalOk = () => {
           avatar: formData.avatar || undefined,
           status: formData.status
         }
-        await updateUser(formData.id, updateData)
+        await updateUser(updateData)
       } else {
         // 新增
         const createData: CreateUserData = {
@@ -571,8 +544,8 @@ const handleModalCancel = () => {
 const handlePasswordOk = async () => {
   try {
     if (!currentUserId.value) return
-    const { data: { data } } = await resetPassword(currentUserId.value)
-    message.success(`密码重置成功，新密码为：${data.newPassword}`)
+    const res = await resetPassword(currentUserId.value)
+    message.success(`密码重置成功，新密码为：${res.newPassword}`)
     passwordVisible.value = false
   } catch (error) {
     message.error('重置密码失败')
@@ -587,10 +560,8 @@ const handlePasswordCancel = () => {
 
 // 表格变化
 const handleTableChange = (pag: TablePaginationConfig) => {
-  pagination.current = pag.current
-  pagination.pageSize = pag.pageSize
-  searchForm.pageNum = pag.current ?? 1
-  searchForm.pageSize = pag.pageSize ?? 10
+  pagination.current = pag.current || 1
+  pagination.pageSize = pag.pageSize || 10
   fetchData()
 }
 
@@ -598,15 +569,15 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const data = await getUserList({
+    const res = await getUserList({
       ...searchForm,
       pageNum: pagination.current,
       pageSize: pagination.pageSize
     })
-    tableData.value = data.records
-    pagination.total = data.total
-    pagination.current = data.current
-    pagination.pageSize = data.size
+    tableData.value = res.records
+    pagination.total = res.total
+    pagination.current = res.current
+    pagination.pageSize = res.size
   } catch (error) {
     message.error('获取数据失败')
   } finally {

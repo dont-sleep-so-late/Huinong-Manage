@@ -1,31 +1,47 @@
-import http from '@/utils/http'
+import { request } from '@/utils/http'
 
 // 用户信息接口
 export interface UserInfo {
   id: number
   username: string
+  password?: string
   nickname: string | null
   email: string | null
   phone: string
   avatar: string | null
-  role: string
+  role: 'super_admin' | 'admin' | 'user'
   status: 0 | 1
   isVerified: boolean
   realName: string | null
   idCardNumber: string | null
   createdTime: string | null
-  updatedTime: string
-  lastLoginTime: string
+  updatedTime: string | null
+  lastLoginTime: string | null
+}
+
+// 分页结果接口
+export interface PageResult<T> {
+  records: T[]
+  total: number
+  size: number
+  current: number
+  orders: any[]
+  optimizeCountSql: boolean
+  searchCount: boolean
+  maxLimit: number | null
+  countId: string | null
+  pages: number
 }
 
 // 用户查询参数接口
 export interface UserQuery {
-  pageNum?: number
-  pageSize?: number
   username?: string
   phone?: string
   status?: 0 | 1
   role?: string
+  pageNum?: number
+  pageSize?: number
+  createTimeRange?: [string, string]
 }
 
 // 创建用户数据接口
@@ -48,15 +64,6 @@ export interface UpdateUserData {
   status?: 0 | 1
 }
 
-// 分页结果接口
-export interface PageResult<T> {
-  records: T[]
-  total: number
-  size: number
-  current: number
-  pages: number
-}
-
 // API响应接口
 export interface ApiResponse<T> {
   code: number
@@ -65,41 +72,41 @@ export interface ApiResponse<T> {
 }
 
 // 获取用户列表
-export function getUserList(params: UserQuery) {
-  return http.get<ApiResponse<PageResult<UserInfo>>>('/user/list', { params })
+export const getUserList = (params: UserQuery) => {
+  return request.get<PageResult<UserInfo>>('/user/list', { params })
 }
 
 // 创建用户
-export function createUser(data: CreateUserData) {
-  return http.post<ApiResponse<UserInfo>>('/user', data)
+export const createUser = (data: CreateUserData) => {
+  return request.post<UserInfo>('/user/create', data)
 }
 
 // 更新用户
-export function updateUser(id: number, data: UpdateUserData) {
-  return http.put<ApiResponse<UserInfo>>(`/user/${id}`, data)
+export const updateUser = ( data: UpdateUserData) => {
+  return request.put<UserInfo>(`/user/info`, data)
 }
 
 // 删除用户
-export function deleteUser(id: number) {
-  return http.delete<ApiResponse<void>>(`/user/${id}`)
+export const deleteUser = (id: number) => {
+  return request.delete<void>(`/user/${id}`)
 }
 
-// 重置用户密码
-export function resetPassword(id: number) {
-  return http.post<ApiResponse<{ newPassword: string }>>(`/user/${id}/reset-password`)
+// 重置密码
+export const resetPassword = (id: number) => {
+  return request.post<{ newPassword: string }>(`/user/${id}/reset-password`)
 }
 
 // 修改密码
 export function changePassword(data: { oldPassword: string; newPassword: string }) {
-  return http.post<ApiResponse<void>>('/user/change-password', data)
+  return request.post<ApiResponse<void>>('/user/change-password', data)
 }
 
 // 获取用户详情
 export function getUserInfo(id: number) {
-  return http.get<ApiResponse<UserInfo>>(`/user/${id}`)
+  return request.get<ApiResponse<UserInfo>>(`/user/${id}`)
 }
 
 // 更新用户状态
-export function updateUserStatus(id: number, status: 0 | 1) {
-  return http.put<ApiResponse<void>>(`/user/${id}/status`, { status })
+export const updateUserStatus = (id: number, status: 0 | 1) => {
+  return request.patch<void>(`/user/${id}/status`, { status })
 } 
