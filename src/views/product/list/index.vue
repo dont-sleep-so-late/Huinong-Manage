@@ -122,16 +122,16 @@
           <!-- 操作 -->
           <template v-if="column.dataIndex === 'action'">
             <a-space>
-              <a @click="handleEdit(record)">编辑</a>
-              <a @click="handleSpecs(record)">规格</a>
-              <a @click="handleToggleStatus(record)">
+              <a @click="() => handleEdit(asProduct(record))">编辑</a>
+              <a @click="() => handleSpecs(asProduct(record))">规格</a>
+              <a @click="() => handleToggleStatus(asProduct(record))">
                 {{ record.status === 1 ? '下架' : '上架' }}
               </a>
               <a-popconfirm
                 title="确定要删除该商品吗？"
                 ok-text="确定"
                 cancel-text="取消"
-                @confirm="handleDelete(record)"
+                @confirm="() => handleDelete(asProduct(record))"
               >
                 <a class="danger-link">删除</a>
               </a-popconfirm>
@@ -158,8 +158,8 @@
       >
         <a-form-item label="商品分类" name="categoryId">
           <a-cascader
-            v-model="formData.categoryId"
-            :options="categoryOptions"
+            v-model:value="categoryValue"
+            :options="categories"
             placeholder="请选择商品分类"
             :field-names="{
               label: 'name',
@@ -267,28 +267,151 @@
     <a-modal
       v-model:open="specsVisible"
       title="商品规格"
-      width="600px"
+      width="800px"
       @ok="handleSpecsOk"
       @cancel="handleSpecsCancel"
     >
-      <div v-for="(specs, specId) in specsOptions" :key="specId" class="spec-group">
-        <div class="spec-title">{{ specNames[specId] }}</div>
-        <a-checkbox-group v-model:value="specsForm[specId]">
-          <a-checkbox
-            v-for="spec in specs"
-            :key="spec.id"
-            :value="spec.id"
-          >
-            {{ spec.name }}
-          </a-checkbox>
-        </a-checkbox-group>
+      <template v-if="specTemplate">
+        <div class="spec-template-info" style="margin-bottom: 16px;">
+          <h3>{{ specTemplate.name }}</h3>
+          <div class="spec-attributes">
+            <template v-for="attr in specAttributes" :key="attr.id">
+              <div class="spec-attribute">
+                <span class="label">{{ attr.name }}:</span>
+                <span class="values">
+                  {{ attr.values?.map(v => v.value).join(', ') }}
+                </span>
       </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div class="table-operations" style="margin-bottom: 16px;">
+        <a-button type="primary" @click="handleAddSpec">
+          <template #icon><IconProvider name="plus" /></template>
+          新增规格
+        </a-button>
+      </div>
+
+      <a-table :dataSource="productSpecs" :pagination="false">
+        <a-table-column title="规格名称" dataIndex="specName" />
+        <a-table-column title="规格值" dataIndex="specValue" />
+        <a-table-column title="价格" dataIndex="price">
+          <template #default="{ text }">
+            ¥{{ text.toFixed(2) }}
+          </template>
+        </a-table-column>
+        <a-table-column title="库存" dataIndex="stock" />
+        <a-table-column title="SKU编码" dataIndex="skuCode" />
+        <a-table-column title="状态" dataIndex="status">
+          <template #default="{ text }">
+            <a-tag :color="text === 1 ? 'green' : 'red'">
+              {{ text === 1 ? '启用' : '禁用' }}
+            </a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column title="操作">
+          <template #default="{ record }">
+            <a-space>
+              <a @click="handleEditSpec(record)">编辑</a>
+              <a @click="handleToggleSpecStatus(record)">
+                {{ record.status === 1 ? '禁用' : '启用' }}
+              </a>
+              <a-popconfirm
+                title="确定要删除该规格吗？"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="() => handleDeleteSpec(record)"
+              >
+                <a class="danger-link">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
+        </a-table-column>
+      </a-table>
+    </a-modal>
+
+    <!-- 规格表单弹窗 -->
+    <a-modal
+      v-model:open="specFormVisible"
+      :title="specFormTitle"
+      @ok="handleSpecFormOk"
+      @cancel="handleSpecFormCancel"
+    >
+      <a-form
+        ref="specFormRef"
+        :model="specFormData"
+        :rules="specRules"
+        :label-col="{ span: 4 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <a-form-item label="规格名称" name="specName">
+          <a-select
+            v-model:value="specFormData.specName"
+            placeholder="请选择规格名称"
+          >
+            <a-select-option
+              v-for="attr in specAttributes"
+              :key="attr.id"
+              :value="attr.name"
+            >
+              {{ attr.name }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="规格值" name="specValue">
+          <a-select
+            v-model:value="specFormData.specValue"
+            placeholder="请选择规格值"
+            :disabled="!specFormData.specName"
+          >
+            <a-select-option
+              v-for="value in getSpecValues(specFormData.specName)"
+              :key="value.id"
+              :value="value.value"
+            >
+              {{ value.value }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="价格" name="price">
+          <a-input-number
+            v-model:value="specFormData.price"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+            placeholder="请输入价格"
+          />
+        </a-form-item>
+        <a-form-item label="库存" name="stock">
+          <a-input-number
+            v-model:value="specFormData.stock"
+            :min="0"
+            style="width: 100%"
+            placeholder="请输入库存"
+          />
+        </a-form-item>
+        <a-form-item label="SKU编码" name="skuCode">
+          <a-input
+            v-model:value="specFormData.skuCode"
+            placeholder="请输入SKU编码"
+            :maxlength="50"
+          />
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-radio-group v-model:value="specFormData.status">
+            <a-radio :value="1">启用</a-radio>
+            <a-radio :value="0">禁用</a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-form>
     </a-modal>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
 import type { Key } from 'ant-design-vue/es/table/interface'
@@ -307,9 +430,28 @@ import {
   getCategories,
   type Product,
   type ProductQuery,
-  type ProductCreateDTO,
-  type ProductSpec
+  type ProductCreateDTO
 } from '@/api/product'
+
+import {
+  getProductSpecList,
+  createProductSpec,
+  updateProductSpec,
+  deleteProductSpec,
+  updateProductSpecStatus,
+  updateProductSpecStock,
+  updateProductSpecPrice,
+  getSpecTemplateList,
+  getSpecAttributeList,
+  getSpecAttributeValueList,
+  batchCreateProductSpec,
+  type ProductSpec,
+  type ProductSpecDTO,
+  type BatchProductSpecDTO,
+  type SpecTemplate,
+  type SpecAttribute,
+  type SpecAttributeValue
+} from '@/api/spec'
 
 // 表格列定义
 const columns = [
@@ -350,12 +492,16 @@ const columns = [
   },
   {
     title: '操作',
-    key: 'action'
+    dataIndex: 'action',
+    key: 'action',
+    fixed: 'right' as const,
+    width: 200
   }
 ]
 
 // 商品分类选项
-const categoryOptions = ref<any[]>([])
+const categories = ref<any[]>([])
+const categoryOptions = computed(() => categories.value)
 
 // 搜索表单数据
 const searchForm = reactive<Partial<ProductQuery>>({
@@ -422,29 +568,288 @@ const rules = {
 // 规格弹窗
 const specsVisible = ref(false)
 const currentProductId = ref<number>()
-const specsOptions = ref({
-  1: [
-    { id: 1, name: '红色' },
-    { id: 2, name: '蓝色' },
-    { id: 3, name: '黑色' }
-  ],
-  2: [
-    { id: 4, name: 'S' },
-    { id: 5, name: 'M' },
-    { id: 6, name: 'L' }
-  ]
-})
-const specNames = {
-  1: '颜色',
-  2: '尺寸'
-}
-const specsForm = reactive<Record<number, number[]>>({
-  1: [],
-  2: []
+const currentCategoryId = ref<number>()
+const productSpecs = ref<ProductSpec[]>([])
+const specFormRef = ref()
+const specFormVisible = ref(false)
+const specFormTitle = ref('新增规格')
+const specFormData = reactive<Partial<ProductSpecDTO>>({
+  id: undefined,
+  productId: undefined,
+  specName: '',
+  specValue: '',
+  price: undefined,
+  stock: undefined,
+  skuCode: '',
+  status: 1
 })
 
+// 规格表单验证规则
+const specRules = {
+  specName: [{ required: true, message: '请选择规格名称' }],
+  specValue: [{ required: true, message: '请选择规格值' }],
+  price: [{ required: true, message: '请输入价格' }],
+  stock: [{ required: true, message: '请输入库存' }]
+}
+
+// 规格模板数据
+const specTemplate = ref<SpecTemplate | null>(null)
+const specAttributes = ref<SpecAttribute[]>([])
+const specTemplateLoading = ref(false)
+
+// 获取规格模板
+const fetchSpecTemplate = async (categoryId: number) => {
+  specTemplateLoading.value = true
+  try {
+    // 1. 获取规格模板列表
+    const templates = await getSpecTemplateList({ categoryId, status: 1 })
+    if (!templates || templates.length === 0) {
+      message.warning('该商品分类未设置规格模板')
+      return
+    }
+    
+    // 2. 获取第一个可用的模板
+    const template = templates[0]
+    specTemplate.value = template
+    
+    // 3. 获取规格属性列表
+    const attributes = await getSpecAttributeList(template.id)
+    specAttributes.value = attributes
+    
+    // 4. 获取每个属性的可选值
+    await Promise.all(
+      attributes.map(async (attr: SpecAttribute) => {
+        const values = await getSpecAttributeValueList(attr.id)
+        attr.values = values
+      })
+    )
+  } catch (error) {
+    console.error('获取规格模板失败:', error)
+    message.error('获取规格模板失败')
+  } finally {
+    specTemplateLoading.value = false
+  }
+}
+
+// 规格
+const handleSpecs = async (record: Product) => {
+  try {
+    currentProductId.value = record.id
+    currentCategoryId.value = record.categoryId
+    
+    // 先获取商品分类对应的规格模板
+    await fetchSpecTemplate(record.categoryId)
+    
+    // 再获取商品的规格列表
+    const specs = await getProductSpecList(record.id)
+    productSpecs.value = specs
+    
+    specsVisible.value = true
+  } catch (error) {
+    console.error('获取规格信息失败:', error)
+    message.error('获取规格信息失败')
+  }
+}
+
+// 新增规格
+const handleAddSpec = () => {
+  if (!specTemplate.value) {
+    message.warning('该商品分类未设置规格模板')
+    return
+  }
+  
+  specFormTitle.value = '新增规格'
+  specFormData.productId = currentProductId.value
+  specFormData.specName = ''
+  specFormData.specValue = ''
+  specFormData.price = undefined
+  specFormData.stock = undefined
+  specFormData.skuCode = ''
+  specFormData.status = 1
+  specFormVisible.value = true
+}
+
+// 编辑规格
+const handleEditSpec = (record: ProductSpec) => {
+  if (!specTemplate.value) {
+    message.warning('该商品分类未设置规格模板')
+    return
+  }
+  
+  specFormTitle.value = '编辑规格'
+  specFormData.id = record.id
+  specFormData.productId = record.productId
+  specFormData.specName = record.specName
+  specFormData.specValue = record.specValue
+  specFormData.price = record.price
+  specFormData.stock = record.stock
+  specFormData.skuCode = record.skuCode
+  specFormData.status = record.status
+  specFormVisible.value = true
+}
+
+// 删除规格
+const handleDeleteSpec = async (record: ProductSpec) => {
+  try {
+    await deleteProductSpec(record.id)
+    message.success('删除成功')
+    // 重新加载规格列表
+    if (currentProductId.value) {
+      handleSpecs({ id: currentProductId.value, categoryId: currentCategoryId.value } as Product)
+    }
+  } catch (error) {
+    console.error('删除规格失败:', error)
+    message.error('删除失败')
+  }
+}
+
+// 更新规格状态
+const handleToggleSpecStatus = async (record: ProductSpec) => {
+  try {
+    const newStatus = record.status === 1 ? 0 : 1
+    await updateProductSpecStatus(record.id, newStatus)
+    message.success(newStatus === 1 ? '启用成功' : '禁用成功')
+    // 重新加载规格列表
+    if (currentProductId.value) {
+      handleSpecs({ id: currentProductId.value, categoryId: currentCategoryId.value } as Product)
+    }
+  } catch (error) {
+    console.error('更新规格状态失败:', error)
+    message.error('操作失败')
+  }
+}
+
+// 规格表单确认
+const handleSpecFormOk = async () => {
+  try {
+    if (!currentProductId.value || !currentCategoryId.value) {
+      message.error('商品信息不完整')
+      return
+    }
+
+    // 表单验证
+    await specFormRef.value?.validate()
+
+    // 验证规格值是否已存在
+    const existingSpec = productSpecs.value.find(
+      spec => spec.specName === specFormData.specName && 
+              spec.specValue === specFormData.specValue &&
+              (!specFormData.id || spec.id !== specFormData.id)
+    )
+
+    if (existingSpec) {
+      message.error('该规格组合已存在')
+      return
+    }
+
+    if (specFormTitle.value === '新增规格') {
+      // 构造基础数据
+      const baseSpecData = {
+        productId: currentProductId.value,
+        specName: specFormData.specName!,
+        specValue: specFormData.specValue!,
+        price: specFormData.price!,
+        stock: specFormData.stock!,
+        skuCode: specFormData.skuCode || '',
+        status: specFormData.status || 1
+      }
+
+      // 如果规格值已经选择，说明是单个创建
+      if (specFormData.specValue) {
+        await createProductSpec(baseSpecData)
+        message.success('添加成功')
+      } else {
+        // 如果规格值未选择，获取该规格名称下的所有值进行批量创建
+        const attribute = specAttributes.value.find(attr => attr.name === specFormData.specName)
+        if (attribute && attribute.values && attribute.values.length > 0) {
+          const batchData: BatchProductSpecDTO = {
+            productId: currentProductId.value,
+            specDTOList: attribute.values.map(value => ({
+              ...baseSpecData,
+              specValue: value.value
+            }))
+          }
+          await batchCreateProductSpec(batchData)
+          message.success('批量创建成功')
+        } else {
+          message.error('该规格没有可用的规格值')
+          return
+        }
+      }
+    } else {
+      // 编辑规格
+      if (!specFormData.id) {
+        message.error('规格ID不存在')
+        return
+      }
+      const submitData: Partial<ProductSpecDTO> = {
+        specName: specFormData.specName!,
+        specValue: specFormData.specValue!,
+        price: specFormData.price!,
+        stock: specFormData.stock!,
+        skuCode: specFormData.skuCode || '',
+        status: specFormData.status || 1
+      }
+      await updateProductSpec(specFormData.id, submitData)
+      message.success('更新成功')
+    }
+    
+    specFormVisible.value = false
+    // 重新加载规格列表
+    await handleSpecs({ id: currentProductId.value, categoryId: currentCategoryId.value } as Product)
+  } catch (error) {
+    console.error('保存规格失败:', error)
+    message.error('保存失败')
+  }
+}
+
+// 规格表单取消
+const handleSpecFormCancel = () => {
+  specFormVisible.value = false
+}
+
+// 规格确认
+const handleSpecsOk = () => {
+  specsVisible.value = false
+}
+
+// 规格取消
+const handleSpecsCancel = () => {
+  specsVisible.value = false
+  productSpecs.value = []
+}
+
+// 在 script 部分添加
+const categoryValue = computed({
+  get: () => {
+    if (!formData.categoryId) return []
+    return findCategoryPath(categories.value, formData.categoryId)
+  },
+  set: (value: number[]) => {
+    formData.categoryId = value && value.length > 0 ? value[value.length - 1] : undefined
+  }
+})
+
+// 查找分类路径
+const findCategoryPath = (categories: any[], targetId: number): number[] => {
+  const find = (items: any[], id: number, path: number[] = []): number[] | null => {
+    for (const item of items) {
+      if (item.id === id) {
+        return [...path, item.id]
+      }
+      if (item.children) {
+        const result = find(item.children, id, [...path, item.id])
+        if (result) {
+          return result
+        }
+      }
+    }
+    return null
+  }
+  return find(categories, targetId) || [targetId]
+}
+
 // 获取分类列表
-const categories = ref<any[]>([])
 const fetchCategories = async () => {
   try {
     const res = await getCategories()
@@ -534,13 +939,6 @@ const handleEdit = async (record: Product) => {
   }
 }
 
-// 规格
-const handleSpecs = (record: Product) => {
-  currentProductId.value = record.id
-  // TODO: 获取商品规格
-  specsVisible.value = true
-}
-
 // 切换状态
 const handleToggleStatus = async (record: Product) => {
   try {
@@ -589,12 +987,17 @@ const handleDetailImageUploaded = (url: string, index: number) => {
 const handleModalOk = () => {
   formRef.value?.validate().then(async () => {
     try {
+      if (!formData.categoryId) {
+        message.error('请选择商品分类')
+        return
+      }
+
       const submitData: ProductCreateDTO = {
         name: formData.name!,
         description: formData.description!,
         mainImage: formData.mainImage!,
         detailImages: formData.detailImages?.filter(img => img) || [],
-        categoryId: formData.categoryId as number,
+        categoryId: formData.categoryId,
         price: formData.price!,
         stock: formData.stock!,
         status: formData.status!,
@@ -624,25 +1027,6 @@ const handleModalOk = () => {
 const handleModalCancel = () => {
   modalVisible.value = false
   formRef.value?.resetFields()
-}
-
-// 规格确认
-const handleSpecsOk = async () => {
-  try {
-    // TODO: 调用保存规格API
-    message.success('保存成功')
-    specsVisible.value = false
-  } catch (error) {
-    message.error('保存失败')
-  }
-}
-
-// 规格取消
-const handleSpecsCancel = () => {
-  specsVisible.value = false
-  Object.keys(specsForm).forEach(key => {
-    specsForm[Number(key)] = []
-  })
 }
 
 // 表格变化
@@ -709,6 +1093,16 @@ const handleBatchStatus = async (status: 0 | 1) => {
   }
 }
 
+// 类型转换函数
+const asProduct = (record: Record<string, any>): Product => record as unknown as Product
+
+// 获取规格值列表
+const getSpecValues = (specName: string): SpecAttributeValue[] => {
+  if (!specName || !specAttributes.value) return []
+  const attribute = specAttributes.value.find(attr => attr.name === specName)
+  return attribute?.values || []
+}
+
 // 初始化
 onMounted(() => {
   fetchData()
@@ -747,6 +1141,32 @@ onMounted(() => {
 
   .text-danger {
     color: #ff4d4f;
+  }
+
+  .spec-template-info {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 4px;
+
+    h3 {
+      margin: 0 0 8px;
+      color: #333;
+    }
+
+    .spec-attributes {
+      .spec-attribute {
+        margin-bottom: 8px;
+        
+        .label {
+          color: #666;
+          margin-right: 8px;
+        }
+        
+        .values {
+          color: #333;
+        }
+      }
+    }
   }
 }
 </style> 

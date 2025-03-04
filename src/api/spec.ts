@@ -77,6 +77,7 @@ export interface SpecAttributeValueDTO {
 
 // 商品规格创建/更新DTO
 export interface ProductSpecDTO {
+  id?: number
   productId: number
   specName: string
   specValue: string
@@ -84,6 +85,12 @@ export interface ProductSpecDTO {
   stock: number
   skuCode?: string
   status?: 0 | 1
+}
+
+export interface ProductSpec extends ProductSpecDTO {
+  id: number
+  createdTime?: string
+  updatedTime?: string
 }
 
 // 批量创建商品规格DTO
@@ -190,7 +197,7 @@ export function deleteSpecAttributeValue(id: number) {
 
 // 获取规格属性值列表
 export function getSpecAttributeValueList(attributeId: number) {
-  return request.get<SpecAttributeValue[]>('/specs/attribute-values/list', { params: { attributeId } })
+  return request.get<SpecAttributeValue[]>(`/specs/attribute-values/list`, { params: { attributeId } })
 }
 
 // ===== 商品规格管理接口 =====

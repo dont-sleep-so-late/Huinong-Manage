@@ -283,38 +283,37 @@
       @ok="handleValuesModalOk"
       @cancel="handleValuesModalCancel"
     >
-      <a-form-list
-        v-model:value="attributeValues"
-        :rules="[{ required: true, message: '请输入属性值' }]"
-      >
-        <template #default="{ fields, add, remove }">
-          <div v-for="field in fields" :key="field.key">
-            <a-space align="baseline">
-              <a-form-item
-                :name="[field.name]"
-                :rules="[{ required: true, message: '请输入属性值' }]"
-              >
-                <a-input
-                  v-model:value="attributeValues[field.name]"
-                  placeholder="请输入属性值"
-                />
-              </a-form-item>
-              <IconProvider 
-                v-if="fields.length > 1" 
-                name="minus-circle" 
-                class="dynamic-delete-button"
-                @click="() => remove(field.name)"
+      <a-form>
+        <template v-for="(value, index) in attributeValues" :key="index">
+          <a-form-item
+            :label="index === 0 ? '属性值' : ''"
+            :colon="index === 0"
+            :label-col="index === 0 ? { span: 4 } : { span: 0 }"
+            :wrapper-col="index === 0 ? { span: 18 } : { span: 18, offset: 4 }"
+          >
+            <a-space>
+              <a-input
+                v-model:value="attributeValues[index]"
+                placeholder="请输入属性值"
               />
+              <a-button
+                v-if="attributeValues.length > 1"
+                type="link"
+                danger
+                @click="() => attributeValues.splice(index, 1)"
+              >
+                <template #icon><IconProvider name="minus-circle" /></template>
+              </a-button>
             </a-space>
-          </div>
-          <a-form-item>
-            <a-button type="dashed" block @click="() => add()">
-              <IconProvider name="plus" />
-              添加属性值
-            </a-button>
           </a-form-item>
         </template>
-      </a-form-list>
+        <a-form-item :wrapper-col="{ span: 18, offset: 4 }">
+          <a-button type="dashed" block @click="() => attributeValues.push('')">
+            <template #icon><IconProvider name="plus" /></template>
+            添加属性值
+          </a-button>
+        </a-form-item>
+      </a-form>
     </a-modal>
   </div>
 </template>

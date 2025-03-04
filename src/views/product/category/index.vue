@@ -196,8 +196,8 @@ const columns = [
   },
   {
     title: '排序',
-    dataIndex: 'sort',
-    key: 'sort'
+    dataIndex: 'sortOrder',
+    key: 'sortOrder'
   },
   {
     title: '状态',
@@ -206,8 +206,8 @@ const columns = [
   },
   {
     title: '创建时间',
-    dataIndex: 'createTime',
-    key: 'createTime'
+    dataIndex: 'createdTime',
+    key: 'createdTime'
   },
   {
     title: '操作',
@@ -327,7 +327,7 @@ const handleEdit = async (record: any) => {
     formData.name = res.name
     formData.icon = res.icon || ''
     formData.banner = res.banner || ''
-    formData.sortOrder = res.sort
+    formData.sortOrder = res.sortOrder
     formData.status = res.status
     
     // 设置Cascader的值
