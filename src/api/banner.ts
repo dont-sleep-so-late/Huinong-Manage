@@ -1,4 +1,5 @@
 import { request } from '@/utils/http'
+import { ApiResponse } from './auth'
 
 export interface Banner {
   id: number
@@ -31,17 +32,17 @@ export interface BannerForm {
 
 // 获取轮播图列表
 export function getBannerList(params: BannerQuery) {
-  return request.get<{ records: Banner[]; total: number; size: number; current: number; pages: number }>('/banner/page', { params })
+  return request.get<ApiResponse<{ records: Banner[]; total: number; size: number; current: number; pages: number }>>('/banner/page', { params })
 }
 
 // 获取启用的轮播图列表
 export function getActiveBannerList() {
-  return request.get<Banner[]>('/banner/list')
+  return request.get<ApiResponse<Banner[]>>('/banner/list')
 }
 
 // 获取轮播图详情
 export function getBannerDetail(id: number) {
-  return request.get<Banner>(`/banner/${id}`)
+  return request.get<ApiResponse<Banner>>(`/banner/${id}`)
 }
 
 // 添加轮播图

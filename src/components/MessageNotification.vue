@@ -51,13 +51,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
+import { defineComponent, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { getMessageList, getUnreadMessageCount, batchMarkMessagesAsRead, type Message } from '@/api/message'
 import IconProvider from '@/components/IconProvider.vue'
-import { ICON_NAMES } from '@/utils/icons'
 
 export default defineComponent({
   name: 'MessageNotification',
@@ -84,7 +83,9 @@ export default defineComponent({
       try {
         const type = activeTab.value === '0' ? undefined : Number(activeTab.value) as 1 | 2 | 3
         const res = await getUnreadMessageCount(type)
-        unreadCount.value = res
+        if (res.code === 200) {
+          unreadCount.value = res.data
+        }
       } catch (error) {
         console.error('获取未读消息数量失败:', error)
       }
@@ -104,7 +105,9 @@ export default defineComponent({
           isRead: false
         }
         const res = await getMessageList(params)
-        messageList.value = res.records
+        if (res.code === 200) {
+          messageList.value = res.data.records
+        }
       } catch (error) {
         console.error('获取消息列表失败:', error)
         message.error('获取消息列表失败')
@@ -145,25 +148,38 @@ export default defineComponent({
 
     // 处理消息点击
     const handleMessageClick = async (item: Message) => {
-      // 标记为已读
-      if (!item.isRead) {
-        await batchMarkMessagesAsRead([item.id])
-        fetchUnreadCount()
+      try {
+        // 先关闭弹窗
+        visible.value = false
+        
+        // 标记为已读
+        if (!item.isRead) {
+          const res = await batchMarkMessagesAsRead([item.id])
+          if (res.code === 200) {
+            await fetchUnreadCount()
+          }
+        }
+        
+        // 等待下一个 tick 再进行路由跳转
+        await nextTick()
+        
+        // 根据消息类型跳转到相应页面
+        switch (item.type) {
+          case 1:
+            if (item.relatedId) {
+              await router.push(`/order/detail/${item.relatedId}`)
+            }
+            break
+          case 2:
+            await router.push('/product/audit')
+            break
+          default:
+            await router.push('/message')
+        }
+      } catch (error) {
+        console.error('处理消息点击失败:', error)
+        message.error('操作失败，请重试')
       }
-      
-      // 根据消息类型跳转到相应页面
-      if (item.type === 1 && item.relatedId) {
-        // 订单通知，跳转到订单详情
-        router.push(`/order/detail/${item.relatedId}`)
-      } else if (item.type === 2) {
-        // 商品审核通知，跳转到商品审核页面
-        router.push('/product/audit')
-      } else {
-        // 其他消息，跳转到消息中心
-        router.push('/message')
-      }
-      
-      visible.value = false
     }
 
     // 全部标记为已读
@@ -180,10 +196,12 @@ export default defineComponent({
           return
         }
         
-        await batchMarkMessagesAsRead(unreadIds)
-        message.success('已全部标记为已读')
-        fetchMessages()
-        fetchUnreadCount()
+        const res = await batchMarkMessagesAsRead(unreadIds)
+        if (res.code === 200) {
+          message.success('已全部标记为已读')
+          await fetchMessages()
+          await fetchUnreadCount()
+        }
       } catch (error) {
         console.error('标记已读失败:', error)
         message.error('标记已读失败')
@@ -191,9 +209,15 @@ export default defineComponent({
     }
 
     // 查看更多
-    const handleViewMore = () => {
-      router.push('/system/message')
-      visible.value = false
+    const handleViewMore = async () => {
+      try {
+        visible.value = false
+        await nextTick()
+        await router.push('/system/message')
+      } catch (error) {
+        console.error('跳转到消息中心失败:', error)
+        message.error('跳转失败，请重试')
+      }
     }
 
     onMounted(() => {
@@ -202,6 +226,7 @@ export default defineComponent({
       
       // 设置定时刷新
       timer = window.setInterval(() => {
+        if (!timer) return // 如果已经被清理，直接返回
         fetchUnreadCount()
         if (visible.value) {
           fetchMessages()
@@ -215,6 +240,11 @@ export default defineComponent({
         clearInterval(timer)
         timer = null
       }
+      // 重置状态
+      visible.value = false
+      loading.value = false
+      messageList.value = []
+      unreadCount.value = 0
     })
 
     return {

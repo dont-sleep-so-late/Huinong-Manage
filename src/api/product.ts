@@ -1,5 +1,5 @@
 import { request } from '@/utils/http'
-
+import { ApiResponse } from './auth'
 export interface Product {
   id: number
   name: string
@@ -68,68 +68,68 @@ export interface AuditParams {
 
 // 获取商品列表（分页）
 export function getProductList(params: ProductQuery) {
-  return request.get<{
+  return request.get<ApiResponse<{
     records: Product[];
     total: number;
     size: number;
     current: number;
     pages: number;
-  }>('/products/list', { params })
+  }>>('/products/list', { params })
 }
 
 // 获取商品总数
 export function getProductCount(params: Partial<ProductQuery>) {
-  return request.get<number>('/products/count', { params })
+  return request.get<ApiResponse<number>>('/products/count', { params })
 }
 
 // 获取商品详情
 export function getProductDetail(id: number) {
-  return request.get<Product>(`/products/${id}`)
+  return request.get<ApiResponse<Product>>(`/products/${id}`)
 }
 
 // 添加商品
 export function addProduct(data: ProductCreateDTO) {
-  return request.post<Product>('/products', data)
+  return request.post<ApiResponse<Product>>('/products', data)
 }
 
 // 更新商品
 export function updateProduct(id: number, data: Partial<ProductCreateDTO>) {
-  return request.put<Product>(`/products/${id}`, data)
+  return request.put<ApiResponse<Product>>(`/products/${id}`, data)
 }
 
 // 删除商品
 export function deleteProduct(id: number) {
-  return request.delete(`/products/${id}`)
+  return request.delete<ApiResponse<void>>(`/products/${id}`)
 }
 
 // 批量删除商品
 export function batchDeleteProducts(ids: number[]) {
-  return request.delete('/products/batch', { data: ids })
+  return request.delete<ApiResponse<void>>('/products/batch', { data: ids })
 }
 
 // 更新商品状态
 export function updateProductStatus(id: number, status: 0 | 1) {
-  return request.put(`/products/${id}/status?status=${status}`)
+  return request.put<ApiResponse<void>>(`/products/${id}/status?status=${status}`)
 }
 
 // 批量更新商品状态
 export function batchUpdateProductStatus(ids: number[], status: 0 | 1) {
-  return request.put(`/products/batch/status?status=${status}`, ids)
+  return request.put<ApiResponse<void>>(`/products/batch/status?status=${status}`, ids)
 }
 
 // 获取商品分类
 export function getCategories() {
-  return request.get<Array<{ id: number; name: string; children?: Array<{ id: number; name: string }> }>>('/categories/tree')
+  return request.get<ApiResponse<Array<{ id: number; name: string; children?: Array<{ id: number; name: string }> }>>>('/categories/tree')
 }
 
 // 审核商品
 export function auditProduct(data: AuditParams) {
-  return request.put(`/products/${data.id}/audit`, data)
+  return request.put<ApiResponse<void>>(`/products/${data.id}/audit`, data)
 }
 
 // 批量审核商品
 export function batchAuditProducts(data: { ids: number[]; status: 1 | 2; remark?: string }) {
-  return request.put('/products/batch/audit', data)
+  return request.put<ApiResponse<void>>('/products/batch/audit', data)
 }
 
 // 获取待审核商品列表
@@ -138,16 +138,16 @@ export interface AuditProductQuery extends Omit<ProductQuery, 'status'> {
 }
 
 export function getPendingAuditProducts(params: AuditProductQuery) {
-  return request.get<{
+  return request.get<ApiResponse<{
     records: Product[];
     total: number;
     size: number;
     current: number;
     pages: number;
-  }>('/products/audit/pending', { params })
+  }>>('/products/audit/pending', { params })
 }
 
 // 获取待审核商品数量
 export function getPendingAuditCount() {
-  return request.get<number>('/products/audit/count')
+  return request.get<ApiResponse<number>>('/products/audit/count')
 } 

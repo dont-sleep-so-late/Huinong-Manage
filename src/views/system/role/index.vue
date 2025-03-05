@@ -337,7 +337,7 @@ const handleEdit = (record: RoleInfo) => {
 const handlePermission = async (record: RoleInfo) => {
   currentRoleId.value = record.id
   try {
-    const data = await getRolePermissionTree(record.id)
+    const {data} = await getRolePermissionTree(record.id)
     permissionTree.value = data.permissionTree
     checkedKeys.value =  data.checkedKeys.map(Number)
     permissionVisible.value = true
@@ -428,7 +428,7 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const data = await getRoleList(searchForm)
+    const {data} = await getRoleList(searchForm)
     tableData.value = data.records
     pagination.total = data.total
   } catch (error) {

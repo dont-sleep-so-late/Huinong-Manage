@@ -47,24 +47,24 @@ export const useUserStore = defineStore('user', () => {
   const login = async (loginParams: LoginParams) => {
     try {
       console.log('开始登录，参数:', loginParams)
-      const response = await userLogin(loginParams)
-      console.log('登录响应:', response)
+      const {data} = await userLogin(loginParams)
+      console.log('登录响应:', data)
 
-      if (!response) {
+      if (!data) {
         throw new Error('登录失败：响应数据为空')
       }
 
       // 保存 token 和用户信息
-      token.value = response.token
-      userInfo.value = response.userInfo
-      role.value = response.role
+      token.value = data.token
+      userInfo.value = data.userInfo
+      role.value = data.role
 
       // 保存到 localStorage
-      localStorage.setItem(TOKEN, response.token)
-      localStorage.setItem(USER_INFO_KEY, JSON.stringify(response.userInfo))
+      localStorage.setItem(TOKEN, data.token)
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.userInfo))
 
       console.log('登录成功，用户信息已保存')
-      return response
+      return data
     } catch (error) {
       console.error('登录失败:', error)
       if (error instanceof Error) {

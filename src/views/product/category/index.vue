@@ -320,19 +320,19 @@ const handleEdit = async (record: any) => {
   try {
     isEdit.value = true
     modalTitle.value = '编辑分类'
-    const res = await getCategoryDetail(record.id)
-    formData.id = res.id
-    formData.parentId = res.parentId
-    formData.level = res.level
-    formData.name = res.name
-    formData.icon = res.icon || ''
-    formData.banner = res.banner || ''
-    formData.sortOrder = res.sortOrder
-    formData.status = res.status
+    const {data} = await getCategoryDetail(record.id)
+    formData.id = data.id
+    formData.parentId = data.parentId
+    formData.level = data.level
+    formData.name = data.name
+    formData.icon = data.icon || ''
+    formData.banner = data.banner || ''
+    formData.sortOrder = data.sortOrder
+    formData.status = data.status
     
     // 设置Cascader的值
-    if (res.parentId && res.parentId !== 0) {
-      parentIdValue.value = [res.parentId.toString()]
+    if (data.parentId && data.parentId !== 0) {
+      parentIdValue.value = [data.parentId.toString()]
     } else {
       parentIdValue.value = []
     }
@@ -421,10 +421,10 @@ const fetchData = async () => {
       status: searchForm.status
     }
     
-    const result = await getCategoryPage(params)
+    const {data} = await getCategoryPage(params)
     
-    tableData.value = result.records
-    pagination.total = result.total
+    tableData.value = data.records
+    pagination.total = data.total
   } catch (error) {
     console.error('获取分类列表失败:', error)
     message.error('获取数据失败')
@@ -436,8 +436,8 @@ const fetchData = async () => {
 // 获取分类树
 const fetchCategoryTree = async () => {
   try {
-    const res = await getCategoryTree()
-    categoryOptions.value = res
+    const {data} = await getCategoryTree()
+    categoryOptions.value = data
   } catch (error) {
     console.error('获取分类树失败:', error)
     message.error('获取分类树失败')

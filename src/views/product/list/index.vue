@@ -602,24 +602,24 @@ const fetchSpecTemplate = async (categoryId: number) => {
   specTemplateLoading.value = true
   try {
     // 1. 获取规格模板列表
-    const templates = await getSpecTemplateList({ categoryId, status: 1 })
-    if (!templates || templates.length === 0) {
+    const {data} = await getSpecTemplateList({ categoryId, status: 1 })
+    if (!data || data.length === 0) {
       message.warning('该商品分类未设置规格模板')
       return
     }
     
     // 2. 获取第一个可用的模板
-    const template = templates[0]
+    const template = data[0]
     specTemplate.value = template
     
     // 3. 获取规格属性列表
-    const attributes = await getSpecAttributeList(template.id)
+    const {data: attributes} = await getSpecAttributeList(template.id)
     specAttributes.value = attributes
     
     // 4. 获取每个属性的可选值
     await Promise.all(
       attributes.map(async (attr: SpecAttribute) => {
-        const values = await getSpecAttributeValueList(attr.id)
+        const {data: values} = await getSpecAttributeValueList(attr.id)
         attr.values = values
       })
     )
@@ -641,8 +641,8 @@ const handleSpecs = async (record: Product) => {
     await fetchSpecTemplate(record.categoryId)
     
     // 再获取商品的规格列表
-    const specs = await getProductSpecList(record.id)
-    productSpecs.value = specs
+    const {data} = await getProductSpecList(record.id)
+    productSpecs.value = data
     
     specsVisible.value = true
   } catch (error) {
@@ -852,8 +852,8 @@ const findCategoryPath = (categories: any[], targetId: number): number[] => {
 // 获取分类列表
 const fetchCategories = async () => {
   try {
-    const res = await getCategories()
-    categories.value = res
+    const {data} = await getCategories()
+    categories.value =  data
   } catch (error) {
     console.error('获取分类列表失败:', error)
     message.error('获取分类列表失败')
@@ -918,20 +918,20 @@ const handleAdd = () => {
 // 编辑
 const handleEdit = async (record: Product) => {
   try {
-    const res = await getProductDetail(record.id)
+    const {data} = await getProductDetail(record.id)
     modalTitle.value = '编辑商品'
-    formData.id = res.id
-    formData.categoryId = res.categoryId
-    formData.name = res.name
-    formData.mainImage = res.mainImage
-    formData.detailImages = res.detailImages || ['']
-    formData.price = res.price
-    formData.stock = res.stock
-    formData.description = res.description
-    formData.region = res.region
-    formData.unit = res.unit
-    formData.weight = res.weight
-    formData.status = res.status
+    formData.id = data.id
+    formData.categoryId = data.categoryId
+    formData.name = data.name
+    formData.mainImage = data.mainImage
+    formData.detailImages = data.detailImages || ['']
+    formData.price = data.price
+    formData.stock = data.stock
+    formData.description = data.description
+    formData.region = data.region
+    formData.unit = data.unit
+    formData.weight = data.weight
+    formData.status = data.status
     modalVisible.value = true
   } catch (error) {
     console.error('获取商品详情失败:', error)
@@ -1045,10 +1045,10 @@ const fetchData = async (params?: ProductQuery) => {
       pageSize: pagination.pageSize || 10
     }
     
-    const result = await getProductList(queryParams)
+    const {data} = await getProductList(queryParams)
     
-    dataSource.value = result.records
-    pagination.total = result.total
+    dataSource.value = data.records
+    pagination.total = data.total
   } catch (error) {
     console.error('获取商品列表失败:', error)
     message.error('获取数据失败')

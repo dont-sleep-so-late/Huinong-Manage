@@ -1,5 +1,5 @@
 import { request } from '@/utils/http'
-
+import { ApiResponse } from './auth'
 // 用户信息接口
 export interface UserInfo {
   id: number
@@ -70,26 +70,19 @@ export interface ChangePasswordData {
   newPassword: string
 }
 
-// API响应接口
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
-
 // 获取用户列表
 export const getUserList = (params: UserQuery) => {
-  return request.get<PageResult<UserInfo>>('/user/list', { params })
+  return request.get<ApiResponse<PageResult<UserInfo>>>('/user/list', { params })
 }
 
 // 创建用户
 export const createUser = (data: CreateUserData) => {
-  return request.post<UserInfo>('/user/create', data)
+  return request.post<ApiResponse<UserInfo>>('/user/create', data)
 }
 
 // 更新用户
 export const updateUser = (data: UpdateUserData) => {
-  return request.put<UserInfo>(`/user/info`, data)
+  return request.put<ApiResponse<UserInfo>>(`/user/info`, data)
 }
 
 // 删除用户
@@ -99,7 +92,7 @@ export const deleteUser = (id: number) => {
 
 // 重置密码
 export const resetPassword = (id: number) => {
-  return request.post<{ newPassword: string }>(`/user/${id}/reset-password`)
+  return request.post<ApiResponse<{ newPassword: string }>>(`/user/${id}/reset-password`)
 }
 
 // 修改密码
@@ -133,14 +126,3 @@ export const updateProfile = (data: UpdateUserData) => {
 export const updatePassword = (data: ChangePasswordData) => {
   return request.put<ApiResponse<void>>('/profile/password', data)
 }
-
-// 上传头像
-export const uploadAvatar = (file: File) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  return request.post<ApiResponse<{ url: string }>>('/profile/avatar', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
-} 

@@ -1,5 +1,5 @@
 import { request } from '@/utils/http'
-
+import { ApiResponse } from './auth'
 // 消息类型定义
 export interface Message {
   id: number
@@ -35,7 +35,7 @@ export interface PageResult<T> {
  * @returns 消息列表分页数据
  */
 export function getMessageList(params: MessageQuery) {
-  return request.get<PageResult<Message>>('/messages', { params })
+  return request.get<ApiResponse<PageResult<Message>>>('/messages', { params })
 }
 
 /**
@@ -45,7 +45,7 @@ export function getMessageList(params: MessageQuery) {
  */
 export function getUnreadMessageCount(type?: 1 | 2 | 3) {
   const params = type ? { type } : {}
-  return request.get<number>('/messages/unread/count', { params })
+  return request.get<ApiResponse<number>>('/messages/unread/count', { params })
 }
 
 /**
@@ -54,7 +54,7 @@ export function getUnreadMessageCount(type?: 1 | 2 | 3) {
  * @returns 标记成功的消息数量
  */
 export function batchMarkMessagesAsRead(ids: number[]) {
-  return request.put<number>('/messages/batch/read', ids)
+  return request.put<ApiResponse<number>>('/messages/batch/read', ids)
 }
 
 /**
@@ -63,5 +63,5 @@ export function batchMarkMessagesAsRead(ids: number[]) {
  * @returns 删除成功的消息数量
  */
 export function batchDeleteMessages(ids: number[]) {
-  return request.delete<number>('/messages/batch', { data: ids })
+  return request.delete<ApiResponse<number>>('/messages/batch', { data: ids })
 } 

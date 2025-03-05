@@ -1,4 +1,5 @@
 import { request } from '@/utils/http'
+import { ApiResponse } from './auth'
 
 export interface Category {
   id: number
@@ -8,7 +9,7 @@ export interface Category {
   parentId: number
   parentName?: string
   level: number
-  sort: number
+  sortOrder: number
   status: 0 | 1
   visible?: 0 | 1
   description?: string
@@ -38,12 +39,12 @@ export interface CategoryQuery {
 
 // 创建分类
 export function createCategory(data: CategoryDTO) {
-  return request.post<Category>('/categories', data)
+  return request.post<ApiResponse<Category>>('/categories', data)
 }
 
 // 更新分类
 export function updateCategory(id: number, data: Partial<CategoryDTO>) {
-  return request.put<null>(`/categories/${id}`, data)
+  return request.put<ApiResponse<null>>(`/categories/${id}`, data)
 }
 
 // 删除分类
@@ -58,12 +59,12 @@ export function batchDeleteCategories(ids: number[]) {
 
 // 获取分类详情
 export function getCategoryDetail(id: number) {
-  return request.get<Category>(`/categories/${id}`)
+  return request.get<ApiResponse<Category>>(`/categories/${id}`)
 }
 
 // 获取分类树
 export function getCategoryTree(parentId?: number) {
-  return request.get<Category[]>('/categories/tree', { params: { parentId } })
+  return request.get<ApiResponse<Category[]>>(`/categories/tree`, { params: { parentId } })
 }
 
 // 更新分类状态
@@ -83,16 +84,16 @@ export function updateCategorySort(id: number, sortOrder: number) {
 
 // 分页查询分类列表
 export function getCategoryPage(params: CategoryQuery) {
-  return request.get<{
+  return request.get<ApiResponse<{
     records: Category[]
     total: number
     size: number
     current: number
     pages: number
-  }>('/categories/page', { params })
+  }>>('/categories/page', { params })
 }
 
 // 获取分类商品数量
 export function getCategoryProductCount(categoryId: number) {
-  return request.get<number>('/categories/count', { params: { categoryId } })
+  return request.get<ApiResponse<number>>(`/categories/count`, { params: { categoryId } })
 } 

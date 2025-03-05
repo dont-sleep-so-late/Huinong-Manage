@@ -169,13 +169,12 @@ onMounted(async () => {
 // 获取用户个人信息
 const fetchUserProfile = async () => {
   try {
-    const response = await getProfile()
-    console.log('获取个人信息响应:', response)
+    const {data} = await getProfile()
     
     // 直接使用响应数据，因为API直接返回用户对象而不是标准的{code, message, data}格式
-    if (response) {
+    if (data) {
       // 使用类型断言将response转换为UserInfo类型
-      const userInfo = response as unknown as UserInfo
+      const userInfo = data as unknown as UserInfo
       formState.username = userInfo.username || ''
       formState.nickname = userInfo.nickname || ''
       formState.phone = userInfo.phone || ''
@@ -220,12 +219,14 @@ const handleSubmit = async () => {
     
     console.log('更新个人信息响应:', response)
     
-    if (response && response.code === 200) {
-      // 更新 store 中的用户信息
+    // 直接使用响应数据，因为API直接返回用户对象
+    const userResponse = response as unknown as UserInfo
+    if (userResponse && userResponse.id) {
+      // 更新用户信息到store
       await userStore.getUserInfo()
       message.success('个人信息修改成功')
     } else {
-      message.error(response?.message || '修改失败，请重试')
+      message.error('修改失败，请重试')
     }
   } catch (error) {
     console.error('修改个人信息失败:', error)

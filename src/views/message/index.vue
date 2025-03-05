@@ -202,9 +202,9 @@ const fetchMessages = async () => {
       params.type = Number(activeTab.value) as 1 | 2 | 3
     }
     
-    const res = await getMessageList(params)
-    messageList.value = res.records
-    pagination.total = res.total
+    const { data } = await getMessageList(params)
+    messageList.value = data.records
+    pagination.total = data.total
   } catch (error) {
     console.error('获取消息列表失败:', error)
     message.error('获取消息列表失败')

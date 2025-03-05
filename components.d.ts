@@ -74,6 +74,7 @@ declare module 'vue' {
     NotFound: typeof import('./src/components/NotFound.vue')['default']
     PlusOutlined: typeof import('@ant-design/icons-vue')['PlusOutlined']
     RedoOutlined: typeof import('@ant-design/icons-vue')['RedoOutlined']
+    ReloadOutlined: typeof import('@ant-design/icons-vue')['ReloadOutlined']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchOutlined: typeof import('@ant-design/icons-vue')['SearchOutlined']

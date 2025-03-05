@@ -89,8 +89,8 @@
           </template>
           
           <template v-else-if="column.key === 'role'">
-            <a-tag :color="text === 'super_admin' ? 'purple' : text === 'admin' ? 'blue' : 'default'">
-              {{ text === 'super_admin' ? '超级管理员' : text === 'admin' ? '管理员' : '普通用户' }}
+            <a-tag :color="text === 'super_admin' ? 'purple' : text === 'admin' ? 'blue' : text === 'seller' ? 'green' : 'default'">
+              {{ text === 'super_admin' ? '超级管理员' : text === 'admin' ? '管理员' : text === 'seller' ? '卖家' : '买家' }}
             </a-tag>
           </template>
           
@@ -309,7 +309,8 @@ const statusOptions = [
 const roleOptions = [
   { label: '超级管理员', value: 'super_admin' },
   { label: '管理员', value: 'admin' },
-  { label: '普通用户', value: 'user' }
+  { label: '卖家', value: 'seller' },
+  { label: '买家', value: 'buyer' }
 ]
 
 // 搜索表单数据
@@ -569,15 +570,15 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await getUserList({
+    const {data} = await getUserList({
       ...searchForm,
       pageNum: pagination.current,
       pageSize: pagination.pageSize
     })
-    tableData.value = res.records
-    pagination.total = res.total
-    pagination.current = res.current
-    pagination.pageSize = res.size
+    tableData.value = data.records
+    pagination.total = data.total
+    pagination.current = data.current
+    pagination.pageSize = data.size
   } catch (error) {
     message.error('获取数据失败')
   } finally {

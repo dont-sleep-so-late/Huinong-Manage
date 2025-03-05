@@ -79,7 +79,7 @@ http.interceptors.response.use(
     const { data } = response;
     // 根据后端 Result 类的格式判断请求是否成功
     if (data.code === 200) {
-      return data.data; // 直接返回数据部分
+      return data; // 直接返回数据部分
     } else {
       // 显示错误消息
       message.error(data.message || '操作失败');

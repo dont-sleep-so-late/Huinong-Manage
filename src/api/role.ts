@@ -1,5 +1,5 @@
 import http from '@/utils/http'
-
+import { ApiResponse } from './auth'
 // 角色信息接口
 export interface RoleInfo {
   id: number
@@ -22,12 +22,12 @@ export interface PageResult<T> {
 
 // 创建角色
 export const createRole = (data: Pick<RoleInfo, 'name' | 'code' | 'description'>) => {
-  return http.post<RoleInfo>('/role', data)
+  return http.post<ApiResponse<RoleInfo>>('/role', data)
 }
 
 // 更新角色
 export const updateRole = (id: number, data: Pick<RoleInfo, 'name' | 'code' | 'description'>) => {
-  return http.put<RoleInfo>(`/role/${id}`, data)
+  return http.put<ApiResponse<RoleInfo>>(`/role/${id}`, data)
 }
 
 // 删除角色
@@ -37,7 +37,7 @@ export const deleteRole = (id: number) => {
 
 // 获取角色详情
 export const getRoleDetail = (id: number) => {
-  return http.get<RoleInfo>(`/role/${id}`)
+  return http.get<ApiResponse<RoleInfo>>(`/role/${id}`)
 }
 
 // 获取角色列表（分页）
@@ -50,12 +50,12 @@ export interface RoleQuery {
 }
 
 export const getRoleList = (params: RoleQuery) => {
-  return http.get<PageResult<RoleInfo>>('/role/list', { params })
+  return http.get<ApiResponse<PageResult<RoleInfo>>>('/role/list', { params })
 }
 
 // 获取所有角色
 export const getAllRoles = () => {
-  return http.get<RoleInfo[]>('/role/all')
+  return http.get<ApiResponse<RoleInfo[]>>('/role/all')
 }
 
 // 更新角色状态

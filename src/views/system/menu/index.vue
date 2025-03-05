@@ -441,9 +441,9 @@ const handleModalCancel = () => {
 const fetchData = async () => {
   try {
     loading.value = true
-    const res = await getPermissionTree()
-    if (Array.isArray(res)) {
-      const convertedData = res.map(item => ({
+    const {data} = await getPermissionTree()
+    if (Array.isArray(data)) {
+      const convertedData = data.map(item => ({
         ...item,
         type: item.type || 'menu',
         icon: item.icon || undefined,

@@ -126,7 +126,7 @@ const handleLogout = async () => {
 
 // 个人中心
 const handleProfile = () => {
-  router.push('/profile')
+  router.push('/system/profile')
 }
 </script>
 

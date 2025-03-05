@@ -1,5 +1,12 @@
 import http from '@/utils/http'
 
+// API 统一响应接口
+export interface ApiResponse<T = any> {
+  code: number
+  message: string
+  data: T
+}
+
 // 登录方式
 export type LoginType = 'phone' | 'email' | 'sms'
 
@@ -101,18 +108,12 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
-export interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-}
-
 export interface MenuResponse {
   menus: MenuItem[];
 }
 
 // 登录
-export const login = (params: LoginParams): Promise<LoginResponse> => {
+export const login = (params: LoginParams): Promise<ApiResponse<LoginResponse>> => {
   return http.post('/auth/login', params)
 }
 

@@ -166,8 +166,8 @@ export const usePermissionStore = defineStore("permission", () => {
   const generateRoutes = async () => {
     try {
       console.log('开始获取菜单数据')
-      const apiResponse = await getUserMenus()
-      const response = apiResponse as unknown as MenuApiResponse
+      const {data} = await getUserMenus()
+      const response = data as unknown as MenuApiResponse
       console.log('菜单响应:', response)
 
       if (!response || !response.menus) {

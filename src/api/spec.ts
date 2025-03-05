@@ -1,5 +1,5 @@
 import { request } from '@/utils/http'
-
+import { ApiResponse } from './auth'
 // 规格模板接口
 export interface SpecTemplate {
   id: number
@@ -112,7 +112,7 @@ export interface SpecTemplateQuery {
 
 // 创建规格模板
 export function createSpecTemplate(data: SpecTemplateDTO) {
-  return request.post<SpecTemplate>('/specs/templates', data)
+  return request.post<ApiResponse<SpecTemplate>>('/specs/templates', data)
 }
 
 // 更新规格模板
@@ -127,23 +127,23 @@ export function deleteSpecTemplate(id: number) {
 
 // 获取规格模板详情
 export function getSpecTemplateDetail(id: number) {
-  return request.get<SpecTemplate>(`/specs/templates/${id}`)
+  return request.get<ApiResponse<SpecTemplate>>(`/specs/templates/${id}`)
 }
 
 // 分页查询规格模板
 export function getSpecTemplatePage(params: SpecTemplateQuery) {
-  return request.get<{
+  return request.get<ApiResponse<{
     records: SpecTemplate[]
     total: number
     size: number
     current: number
     pages: number
-  }>('/specs/templates/page', { params })
+  }>>('/specs/templates/page', { params })
 }
 
 // 获取规格模板列表
 export function getSpecTemplateList(params?: Partial<SpecTemplateQuery>) {
-  return request.get<SpecTemplate[]>('/specs/templates/list', { params })
+  return request.get<ApiResponse<SpecTemplate[]>>('/specs/templates/list', { params })
 }
 
 // 更新规格模板状态
@@ -155,7 +155,7 @@ export function updateSpecTemplateStatus(id: number, status: 0 | 1) {
 
 // 创建规格属性
 export function createSpecAttribute(data: SpecAttributeDTO) {
-  return request.post<SpecAttribute>('/specs/attributes', data)
+  return request.post<ApiResponse<SpecAttribute>>('/specs/attributes', data)
 }
 
 // 更新规格属性
@@ -170,19 +170,19 @@ export function deleteSpecAttribute(id: number) {
 
 // 获取规格属性详情
 export function getSpecAttributeDetail(id: number) {
-  return request.get<SpecAttribute>(`/specs/attributes/${id}`)
+  return request.get<ApiResponse<SpecAttribute>>(`/specs/attributes/${id}`)
 }
 
 // 获取规格属性列表
 export function getSpecAttributeList(templateId: number) {
-  return request.get<SpecAttribute[]>('/specs/attributes/list', { params: { templateId } })
+  return request.get<ApiResponse<SpecAttribute[]>>(`/specs/attributes/list`, { params: { templateId } })
 }
 
 // ===== 规格属性值管理接口 =====
 
 // 创建规格属性值
 export function createSpecAttributeValue(data: SpecAttributeValueDTO) {
-  return request.post<SpecAttributeValue>('/specs/attribute-values', data)
+  return request.post<ApiResponse<SpecAttributeValue>>('/specs/attribute-values', data)
 }
 
 // 更新规格属性值
@@ -197,7 +197,7 @@ export function deleteSpecAttributeValue(id: number) {
 
 // 获取规格属性值列表
 export function getSpecAttributeValueList(attributeId: number) {
-  return request.get<SpecAttributeValue[]>(`/specs/attribute-values/list`, { params: { attributeId } })
+  return request.get<ApiResponse<SpecAttributeValue[]>>(`/specs/attribute-values/list`, { params: { attributeId } })
 }
 
 // ===== 商品规格管理接口 =====
@@ -219,12 +219,12 @@ export function deleteProductSpec(id: number) {
 
 // 获取商品规格详情
 export function getProductSpecDetail(id: number) {
-  return request.get<ProductSpec>(`/specs/product-specs/${id}`)
+  return request.get<ApiResponse<ProductSpec>>(`/specs/product-specs/${id}`)
 }
 
 // 获取商品规格列表
 export function getProductSpecList(productId: number) {
-  return request.get<ProductSpec[]>('/specs/product-specs/list', { params: { productId } })
+  return request.get<ApiResponse<ProductSpec[]>>(`/specs/product-specs/list`, { params: { productId } })
 }
 
 // 更新商品规格状态
@@ -244,5 +244,5 @@ export function updateProductSpecPrice(id: number, price: number) {
 
 // 批量创建商品规格
 export function batchCreateProductSpec(data: BatchProductSpecDTO) {
-  return request.post<ProductSpec[]>('/specs/product-specs/batch', data)
+  return request.post<ApiResponse<ProductSpec[]>>(`/specs/product-specs/batch`, data)
 } 

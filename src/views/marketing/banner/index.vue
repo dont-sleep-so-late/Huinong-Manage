@@ -336,11 +336,11 @@ const fetchData = async () => {
       pageSize: pagination.pageSize!,
       ...searchForm
     }
-    const res = await getBannerList(params)
-    dataSource.value = res.records
-    pagination.total = res.total
-    if (res.current) pagination.current = res.current
-    if (res.size) pagination.pageSize = res.size
+    const {data} = await getBannerList(params)
+    dataSource.value = data.records
+    pagination.total = data.total
+    if (data.current) pagination.current = data.current
+    if (data.size) pagination.pageSize = data.size
   } catch (error) {
     console.error('获取轮播图列表失败:', error)
     message.error('获取轮播图列表失败')
@@ -377,8 +377,8 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 // 查看详情
 const handleView = async (record: any) => {
   try {
-    const res = await getBannerDetail(record.id)
-    detail.value = res
+    const {data} = await getBannerDetail(record.id)
+    detail.value = data
     detailVisible.value = true
   } catch (error) {
     console.error('获取轮播图详情失败:', error)
@@ -402,17 +402,17 @@ const handleAdd = () => {
 // 编辑
 const handleEdit = async (record: any) => {
   try {
-    const res = await getBannerDetail(record.id)
+    const {data} = await getBannerDetail(record.id)
     modalTitle.value = '编辑轮播图'
     modalVisible.value = true
     Object.assign(form, {
-      id: res.id,
-      title: res.title,
-      imageUrl: res.imageUrl,
-      linkUrl: res.linkUrl,
-      sortOrder: res.sortOrder,
-      status: res.status,
-      remark: res.remark || ''
+      id: data.id,
+      title: data.title,
+      imageUrl: data.imageUrl,
+      linkUrl: data.linkUrl,
+      sortOrder: data.sortOrder,
+      status: data.status,
+      remark: data.remark || ''
     })
   } catch (error) {
     console.error('获取轮播图详情失败:', error)

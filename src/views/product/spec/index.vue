@@ -528,8 +528,8 @@ const originalAttributeValues = ref<SpecAttributeValue[]>([])
 // 获取分类列表
 const fetchCategories = async () => {
   try {
-    const res = await getCategories()
-    categories.value = res
+    const {data} = await getCategories()
+    categories.value = data
   } catch (error) {
     console.error('获取分类列表失败:', error)
     message.error('获取分类列表失败')
@@ -575,8 +575,8 @@ const currentEditId = ref<number>(0)
 // 查看详情
 const handleViewDetail = async (record: any) => {
   try {
-    const res = await getSpecTemplateDetail(record.id)
-    Object.assign(detailData, res as SpecTemplate)
+    const {data} = await getSpecTemplateDetail(record.id)
+    Object.assign(detailData, data as SpecTemplate)
     detailVisible.value = true
   } catch (error) {
     console.error('获取规格模板详情失败:', error)
@@ -656,10 +656,10 @@ const fetchData = async () => {
       status: searchForm.status
     }
     
-    const result = await getSpecTemplatePage(params)
+    const { data} = await getSpecTemplatePage(params)
     
-    tableData.value = result.records
-    pagination.total = result.total
+    tableData.value = data.records
+    pagination.total = data.total
   } catch (error) {
     console.error('获取规格模板列表失败:', error)
     message.error('获取数据失败')
@@ -808,8 +808,8 @@ const handleValuesModalCancel = () => {
 // 刷新模板详情
 const refreshTemplateDetail = async () => {
   try {
-    const res = await getSpecTemplateDetail(detailData.id)
-    Object.assign(detailData, res)
+    const {data} = await getSpecTemplateDetail(detailData.id)
+    Object.assign(detailData, data)
   } catch (error) {
     console.error('刷新规格模板详情失败:', error)
   }
