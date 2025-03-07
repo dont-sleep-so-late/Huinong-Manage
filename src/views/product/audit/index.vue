@@ -101,7 +101,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
-            <a @click="handleView(record)">{{ record.name }}</a>
+            <a @click="handleView(asProduct(record))">{{ record.name }}</a>
           </template>
           <template v-if="column.key === 'price'">
             ¥{{ record.price.toFixed(2) }}
@@ -113,11 +113,11 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" @click="handleView(record)">查看</a-button>
+              <a-button type="link" @click="handleView(asProduct(record))">查看</a-button>
               <a-button
                 v-if="record.status === 0"
                 type="link"
-                @click="handleAudit(record)"
+                @click="handleAudit(asProduct(record))"
               >
                 审核
               </a-button>
@@ -144,28 +144,28 @@
         <a-descriptions-item label="商品价格">
           ¥{{ detail.price?.toFixed(2) }}
         </a-descriptions-item>
-        <a-descriptions-item label="原价">
-          ¥{{ detail.originalPrice?.toFixed(2) }}
+        <a-descriptions-item label="库存">
+          {{ detail.stock }}
         </a-descriptions-item>
         <a-descriptions-item label="商家">
           {{ detail.sellerName }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="getStatusColor(detail.status)">
-            {{ getStatusText(detail.status) }}
+          <a-tag :color="getStatusColor(detail.status || 0)">
+            {{ getStatusText(detail.status || 0) }}
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
-          {{ detail.createTime }}
+          {{ detail.createdTime }}
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
-          {{ detail.updateTime }}
+          {{ detail.updatedTime }}
         </a-descriptions-item>
         <a-descriptions-item label="商品图片" :span="2">
           <a-image-preview-group>
             <a-space>
               <a-image
-                v-for="(img, index) in detail.images"
+                v-for="(img, index) in detail.detailImages"
                 :key="index"
                 :width="120"
                 :src="img"
@@ -242,7 +242,9 @@ import {
   batchAuditProducts,
   getCategories,
   type Product,
-  type AuditParams
+  type PageResult,
+  type AuditParams,
+  type BatchAuditParams
 } from '@/api/product'
 
 // 定义本地审核查询接口
@@ -281,13 +283,13 @@ const pagination = reactive<TablePaginationConfig>({
 const columns = [
   {
     title: '商品图片',
-    dataIndex: 'images',
+    dataIndex: 'mainImage',
     key: 'image',
     width: 80,
     customRender: ({ record }: { record: Product }) => {
       return h(Image, {
         width: 50,
-        src: record.images && record.images.length > 0 ? record.images[0] : '',
+        src: record.mainImage || '',
         fallback: "https://via.placeholder.com/50"
       })
     }
@@ -360,13 +362,16 @@ const auditLoading = ref(false)
 const auditFormRef = ref<FormInstance>()
 const auditForm = reactive({
   id: 0,
-  auditStatus: 1,
+  auditStatus: 1 as 1 | 2,
   auditRemark: ''
 })
 const auditRules = {
   auditStatus: [{ required: true, message: '请选择审核结果' }]
 }
 const isMultiple = ref(false)
+
+// 类型转换函数
+const asProduct = (record: Record<string, any>): Product => record as Product
 
 // 获取列表数据
 const fetchData = async () => {
@@ -382,9 +387,10 @@ const fetchData = async () => {
       params.endTime = timeRange.value[1].format('YYYY-MM-DD HH:mm:ss')
     }
     
-    const res = await getPendingAuditProducts(params)
-    dataSource.value = res.records
-    pagination.total = res.total
+    const {data} = await getPendingAuditProducts(params)
+    const pageResult = data as PageResult<Product>
+    dataSource.value = pageResult.records
+    pagination.total = pageResult.total
   } catch (error) {
     console.error('获取商品列表失败:', error)
     message.error('获取商品列表失败')
@@ -396,8 +402,8 @@ const fetchData = async () => {
 // 获取商品分类
 const fetchCategories = async () => {
   try {
-    const res = await getCategories()
-    categories.value = res
+    const {data} = await getCategories()
+    categories.value = data
   } catch (error) {
     console.error('获取商品分类失败:', error)
     message.error('获取商品分类失败')
@@ -433,8 +439,8 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 // 查看详情
 const handleView = async (record: Product) => {
   try {
-    const res = await getProductDetail(record.id)
-    detail.value = res
+    const {data} = await getProductDetail(record.id)
+    detail.value = data
     detailVisible.value = true
   } catch (error) {
     console.error('获取商品详情失败:', error)
@@ -477,7 +483,7 @@ const handleAuditSubmit = async () => {
       // 批量审核
       await batchAuditProducts({
         ids: selectedRowKeys.value.map(key => Number(key)),
-        auditStatus: auditForm.auditStatus as 1 | 2,
+        auditStatus: auditForm.auditStatus,
         auditRemark: auditForm.auditRemark
       })
       message.success('批量审核成功')
@@ -485,8 +491,8 @@ const handleAuditSubmit = async () => {
       // 单个审核
       await auditProduct({
         id: auditForm.id,
-        status: auditForm.auditStatus as 1 | 2,
-        auditReason: auditForm.auditRemark
+        auditStatus: auditForm.auditStatus,
+        auditRemark: auditForm.auditRemark
       })
       message.success('审核成功')
     }

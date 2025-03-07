@@ -73,6 +73,7 @@
         :loading="loading"
         :pagination="pagination"
         @change="handleTableChange"
+        row-key="id"
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'status'">
@@ -82,7 +83,7 @@
           </template>
           
           <template v-else-if="column.key === 'payType'">
-            {{ text === 1 ? '微信支付' : '支付宝' }}
+            {{ text === PaymentMethod.ALIPAY ? '支付宝' : '微信支付' }}
           </template>
           
           <template v-else-if="column.key === 'amount'">
@@ -91,26 +92,26 @@
           
           <template v-else-if="column.key === 'action'">
             <a-space>
-              <a @click="handleDetail(record)">详情</a>
-              <template v-if="record.status === 1">
+              <a @click="handleDetail(asOrder(record))">详情</a>
+              <template v-if="record.status === OrderStatus.PAID">
                 <a-divider type="vertical" />
-                <a @click="handleDelivery(record)">发货</a>
+                <a @click="handleDelivery(asOrder(record))">发货</a>
               </template>
-              <template v-if="record.status === 0">
+              <template v-if="record.status === OrderStatus.PENDING">
                 <a-divider type="vertical" />
                 <a-popconfirm
                   title="确定要取消该订单吗？"
-                  @confirm="handleCancel(record)"
+                  @confirm="() => handleCancel(asOrder(record))"
                 >
                   <a>取消</a>
                 </a-popconfirm>
               </template>
-              <template v-if="record.status === 2">
+              <template v-if="record.status === OrderStatus.SHIPPED">
                 <a-divider type="vertical" />
-                <a @click="handleLogistics(record)">物流</a>
+                <a @click="handleLogistics(asOrder(record))">物流</a>
               </template>
               <a-divider type="vertical" />
-              <a @click="handleRemark(record)">备注</a>
+              <a @click="handleRemark(asOrder(record))">备注</a>
             </a-space>
           </template>
         </template>
@@ -134,16 +135,25 @@
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="支付方式">
-          {{ currentOrder?.payType === 1 ? '微信支付' : '支付宝' }}
+          {{ currentOrder?.paymentMethod ? (currentOrder.paymentMethod === PaymentMethod.ALIPAY ? '支付宝' : '微信支付') : '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="订单金额">
-          ¥{{ currentOrder?.amount?.toFixed(2) }}
+          ¥{{ currentOrder?.totalAmount?.toFixed(2) }}
         </a-descriptions-item>
-        <a-descriptions-item label="下单时间">
-          {{ currentOrder?.createTime }}
+        <a-descriptions-item label="运费">
+          ¥{{ currentOrder?.freightAmount?.toFixed(2) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="应付金额">
+          ¥{{ currentOrder?.payableAmount?.toFixed(2) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="创建时间">
+          {{ currentOrder?.createdTime }}
         </a-descriptions-item>
         <a-descriptions-item label="支付时间">
-          {{ currentOrder?.payTime }}
+          {{ currentOrder?.paymentTime || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="发货时间">
+          {{ currentOrder?.shipTime || '-' }}
         </a-descriptions-item>
       </a-descriptions>
 
@@ -152,13 +162,13 @@
       <h3>收货信息</h3>
       <a-descriptions bordered>
         <a-descriptions-item label="收货人">
-          {{ currentOrder?.receiver }}
+          {{ currentOrder?.shippingName }}
         </a-descriptions-item>
         <a-descriptions-item label="联系电话">
-          {{ currentOrder?.phone }}
+          {{ currentOrder?.shippingPhone }}
         </a-descriptions-item>
         <a-descriptions-item label="收货地址">
-          {{ currentOrder?.address }}
+          {{ currentOrder?.shippingAddress }}
         </a-descriptions-item>
       </a-descriptions>
 
@@ -167,19 +177,40 @@
       <h3>商品信息</h3>
       <a-table
         :columns="productColumns"
-        :data-source="currentOrder?.products"
+        :data-source="currentOrder?.items"
         :pagination="false"
       >
-        <template #bodyCell="{ column, text }">
-          <template v-if="column.key === 'image'">
+        <template #bodyCell="{ column, text, record }">
+          <template v-if="column.key === 'productImage'">
             <img :src="text" alt="商品图片" class="product-image" />
           </template>
-          
-          <template v-else-if="column.key === 'price' || column.key === 'amount'">
+          <template v-else-if="column.key === 'spec'">
+            {{ record.specName }}: {{ record.specValue }}
+          </template>
+          <template v-else-if="column.key === 'price' || column.key === 'subtotal'">
             ¥{{ text.toFixed(2) }}
           </template>
         </template>
       </a-table>
+
+      <template v-if="currentOrder?.logistics">
+        <a-divider />
+        <h3>物流信息</h3>
+        <a-descriptions bordered>
+          <a-descriptions-item label="物流公司">
+            {{ currentOrder.logistics.logisticsCompany }}
+          </a-descriptions-item>
+          <a-descriptions-item label="物流单号">
+            {{ currentOrder.logistics.logisticsNumber }}
+          </a-descriptions-item>
+          <a-descriptions-item label="当前位置">
+            {{ currentOrder.logistics.currentAddress }}
+          </a-descriptions-item>
+          <a-descriptions-item label="更新时间">
+            {{ currentOrder.logistics.updatedTime }}
+          </a-descriptions-item>
+        </a-descriptions>
+      </template>
     </a-modal>
 
     <!-- 发货弹窗 -->
@@ -261,58 +292,40 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue'
-import {
-  SearchOutlined,
-  RedoOutlined,
-  ExportOutlined
-} from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import type { TablePaginationConfig } from 'ant-design-vue'
+import { ref, reactive, h, VNode } from 'vue'
+import { message, Space, Divider, Popconfirm } from 'ant-design-vue'
+import type { TablePaginationConfig, TableColumnType } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
+import {
+  getOrderList,
+  getOrderDetail,
+  updateOrderStatus,
+  updateOrderRemark,
+  deleteOrder,
+  shipOrder,
+  type Order,
+  type OrderQuery,
+  type OrderItem,
+  type ShipParams,
+  OrderStatus,
+  PaymentMethod
+} from '@/api/order'
 
-interface OrderInfo {
-  id: number
-  orderNo: string
-  status: number
-  payType: number
-  amount: number
-  createTime: string
-  payTime: string
-  receiver: string
-  phone: string
-  address: string
-  products: OrderProduct[]
-  remark?: string
-}
-
-interface OrderProduct {
-  id: number
-  name: string
-  image: string
-  price: number
-  quantity: number
-  amount: number
-  specs: string
-}
-
-interface SearchForm {
-  orderNo?: string
-  status?: number
-  payType?: number
+interface ExtendedOrderQuery extends OrderQuery {
   createTime?: [Dayjs, Dayjs]
-  pageNum: number
-  pageSize: number
+  payType?: number
 }
 
-interface DeliveryForm {
-  company: string
-  trackingNo: string
-}
-
+// 物流信息接口
 interface LogisticsInfo {
   content: string
   time: string
+}
+
+// 发货表单接口
+interface DeliveryForm {
+  company: string
+  trackingNo: string
 }
 
 // 表格列定义
@@ -320,65 +333,142 @@ const columns = [
   {
     title: '订单编号',
     dataIndex: 'orderNo',
-    key: 'orderNo'
+    key: 'orderNo',
+    width: 180
+  },
+  {
+    title: '买家',
+    dataIndex: 'userNickname',
+    key: 'userNickname',
+    width: 120
+  },
+  {
+    title: '卖家昵称',
+    dataIndex: 'sellerNickname',
+    key: 'sellerNickname',
+    width: 120
+  },
+  {
+    title: '卖家姓名',
+    dataIndex: 'sellerRealName',
+    key: 'sellerRealName',
+    width: 120
+  },
+  {
+    title: '订单金额',
+    dataIndex: 'totalAmount',
+    key: 'totalAmount',
+    width: 100,
+    align: 'right',
+    customRender: ({ text }: { text: number }) => `¥${text.toFixed(2)}`
+  },
+  {
+    title: '收货人',
+    dataIndex: 'shippingName',
+    key: 'shippingName',
+    width: 100
+  },
+  {
+    title: '联系电话',
+    dataIndex: 'shippingPhone',
+    key: 'shippingPhone',
+    width: 120
   },
   {
     title: '订单状态',
     dataIndex: 'status',
-    key: 'status'
+    key: 'status',
+    width: 100,
+    customRender: ({ text }: { text: OrderStatus }) => h('span', {}, getStatusText(text))
   },
   {
-    title: '支付方式',
-    dataIndex: 'payType',
-    key: 'payType'
-  },
-  {
-    title: '订单金额',
-    dataIndex: 'amount',
-    key: 'amount'
-  },
-  {
-    title: '收货人',
-    dataIndex: 'receiver',
-    key: 'receiver'
-  },
-  {
-    title: '联系电话',
-    dataIndex: 'phone',
-    key: 'phone'
-  },
-  {
-    title: '下单时间',
-    dataIndex: 'createTime',
-    key: 'createTime'
+    title: '创建时间',
+    dataIndex: 'createdTime',
+    key: 'createdTime',
+    width: 180
   },
   {
     title: '操作',
-    key: 'action'
+    key: 'action',
+    fixed: 'right',
+    width: 200,
+    customRender: ({ record }: { record: Order }) => {
+      const children: VNode[] = []
+
+      // 详情按钮
+      children.push(h('a', { onClick: () => handleDetail(record) }, '详情'))
+
+      // 发货按钮
+      if (record.status === OrderStatus.PAID) {
+        children.push(h(Divider, { type: 'vertical' }))
+        children.push(h('a', { onClick: () => handleDelivery(record) }, '发货'))
+      }
+
+      // 取消按钮
+      if (record.status === OrderStatus.PENDING) {
+        children.push(h(Divider, { type: 'vertical' }))
+        children.push(
+          h(Popconfirm, {
+            title: '确定要取消该订单吗？',
+            onConfirm: () => handleCancel(record)
+          }, {
+            default: () => h('a', {}, '取消')
+          })
+        )
+      }
+
+      // 物流按钮
+      if (record.status === OrderStatus.SHIPPED) {
+        children.push(h(Divider, { type: 'vertical' }))
+        children.push(h('a', { onClick: () => handleLogistics(record) }, '物流'))
+      }
+
+      // 备注按钮
+      children.push(h(Divider, { type: 'vertical' }))
+      children.push(h('a', { onClick: () => handleRemark(record) }, '备注'))
+
+      // 删除按钮
+      children.push(h(Divider, { type: 'vertical' }))
+      children.push(
+        h(Popconfirm, {
+          title: '确定要删除该订单吗？',
+          description: '删除后不可恢复，请谨慎操作！',
+          okText: '确定',
+          cancelText: '取消',
+          okType: 'danger',
+          onConfirm: () => handleDelete(record)
+        }, {
+          default: () => h('a', { style: { color: '#ff4d4f' } }, '删除')
+        })
+      )
+
+      return h(Space, {}, () => children)
+    }
   }
-]
+] as TableColumnType<Order>[]
 
 // 商品表格列定义
 const productColumns = [
   {
     title: '商品图片',
-    dataIndex: 'image',
-    key: 'image'
+    dataIndex: 'productImage',
+    key: 'productImage'
   },
   {
     title: '商品名称',
-    dataIndex: 'name',
-    key: 'name'
+    dataIndex: 'productName',
+    key: 'productName'
   },
   {
     title: '规格',
-    dataIndex: 'specs',
-    key: 'specs'
+    key: 'spec',
+    customRender: ({ record }: { record: OrderItem }) => `${record.specName}: ${record.specValue}`
   },
   {
     title: '单价',
     dataIndex: 'price',
-    key: 'price'
+    key: 'price',
+    customRender: ({ text }: { text: number }) => `¥${text.toFixed(2)}`
   },
   {
     title: '数量',
@@ -387,13 +477,14 @@ const productColumns = [
   },
   {
     title: '小计',
-    dataIndex: 'amount',
-    key: 'amount'
+    dataIndex: 'subtotal',
+    key: 'subtotal',
+    customRender: ({ text }: { text: number }) => `¥${text.toFixed(2)}`
   }
 ]
 
 // 搜索表单数据
-const searchForm = reactive<SearchForm>({
+const searchForm = reactive<ExtendedOrderQuery>({
   orderNo: '',
   status: undefined,
   payType: undefined,
@@ -404,18 +495,19 @@ const searchForm = reactive<SearchForm>({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<OrderInfo[]>([])
+const tableData = ref<Order[]>([])
 const pagination = reactive<TablePaginationConfig>({
   total: 0,
   current: 1,
   pageSize: 10,
   showSizeChanger: true,
-  showQuickJumper: true
+  showQuickJumper: true,
+  showTotal: (total: number) => `共 ${total} 条`
 })
 
 // 订单详情
 const detailVisible = ref(false)
-const currentOrder = ref<OrderInfo>()
+const currentOrder = ref<Order>()
 
 // 发货弹窗
 const deliveryVisible = ref(false)
@@ -460,44 +552,41 @@ const logisticsList = ref<LogisticsInfo[]>([
 const remarkVisible = ref(false)
 const remarkFormRef = ref()
 const remarkForm = reactive({
+  orderId: 0,
   content: ''
 })
 
 // 获取状态颜色
-const getStatusColor = (status?: number) => {
+const getStatusColor = (status?: OrderStatus) => {
   switch (status) {
-    case 0:
+    case OrderStatus.PENDING:
       return 'warning'
-    case 1:
+    case OrderStatus.PAID:
       return 'processing'
-    case 2:
+    case OrderStatus.SHIPPED:
       return 'processing'
-    case 3:
+    case OrderStatus.COMPLETED:
       return 'success'
-    case 4:
+    case OrderStatus.CANCELLED:
       return 'default'
-    case 5:
-      return 'error'
     default:
       return 'default'
   }
 }
 
 // 获取状态文本
-const getStatusText = (status?: number) => {
+const getStatusText = (status?: OrderStatus) => {
   switch (status) {
-    case 0:
+    case OrderStatus.PENDING:
       return '待付款'
-    case 1:
+    case OrderStatus.PAID:
       return '待发货'
-    case 2:
+    case OrderStatus.SHIPPED:
       return '已发货'
-    case 3:
+    case OrderStatus.COMPLETED:
       return '已完成'
-    case 4:
+    case OrderStatus.CANCELLED:
       return '已取消'
-    case 5:
-      return '已退款'
     default:
       return '未知'
   }
@@ -524,13 +613,20 @@ const handleExport = () => {
 }
 
 // 查看详情
-const handleDetail = (record: OrderInfo) => {
-  currentOrder.value = record
-  detailVisible.value = true
+const handleDetail = async (record: Order) => {
+  try {
+    const { data } = await getOrderDetail(record.id)
+    currentOrder.value = data
+    detailVisible.value = true
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+    message.error('获取详情失败')
+  }
 }
 
 // 发货
-const handleDelivery = (record: OrderInfo) => {
+const handleDelivery = (record: Order) => {
+  currentOrder.value = record
   deliveryForm.company = ''
   deliveryForm.trackingNo = ''
   deliveryVisible.value = true
@@ -540,11 +636,15 @@ const handleDelivery = (record: OrderInfo) => {
 const handleDeliveryOk = () => {
   deliveryFormRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用发货API
+      await shipOrder(currentOrder.value!.id, {
+        trackingNo: deliveryForm.trackingNo,
+        logisticsCompany: deliveryForm.company
+      })
       message.success('发货成功')
       deliveryVisible.value = false
       fetchData()
     } catch (error) {
+      console.error('发货失败:', error)
       message.error('发货失败')
     }
   })
@@ -557,36 +657,39 @@ const handleDeliveryCancel = () => {
 }
 
 // 取消订单
-const handleCancel = async (record: OrderInfo) => {
+const handleCancel = async (record: Order) => {
   try {
-    // TODO: 调用取消订单API
+    await updateOrderStatus(record.id, OrderStatus.CANCELLED)
     message.success('取消成功')
     fetchData()
   } catch (error) {
+    console.error('取消订单失败:', error)
     message.error('取消失败')
   }
 }
 
 // 查看物流
-const handleLogistics = (record: OrderInfo) => {
+const handleLogistics = (record: Order) => {
   // TODO: 获取物流信息
   logisticsVisible.value = true
 }
 
 // 备注
-const handleRemark = (record: OrderInfo) => {
+const handleRemark = (record: Order) => {
   remarkForm.content = record.remark || ''
+  remarkForm.orderId = record.id
   remarkVisible.value = true
 }
 
 // 备注确认
 const handleRemarkOk = async () => {
   try {
-    // TODO: 调用保存备注API
+    await updateOrderRemark(remarkForm.orderId, remarkForm.content)
     message.success('保存成功')
     remarkVisible.value = false
     fetchData()
   } catch (error) {
+    console.error('保存备注失败:', error)
     message.error('保存失败')
   }
 }
@@ -608,38 +711,48 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    tableData.value = [
-      {
-        id: 1,
-        orderNo: 'DD202401010001',
-        status: 1,
-        payType: 1,
-        amount: 99.8,
-        createTime: '2024-01-01 10:00:00',
-        payTime: '2024-01-01 10:01:00',
-        receiver: '张三',
-        phone: '13800138000',
-        address: '广东省广州市天河区某某路1号',
-        products: [
-          {
-            id: 1,
-            name: '新鲜胡萝卜',
-            image: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
-            price: 2.5,
-            quantity: 2,
-            amount: 5,
-            specs: '500g/盒装'
-          }
-        ]
-      }
-    ]
-    pagination.total = 1
+    const params: OrderQuery = {
+      orderNo: searchForm.orderNo,
+      status: searchForm.status as OrderStatus,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize
+    }
+    
+    // 处理时间范围
+    if (searchForm.createTime) {
+      params.startTime = searchForm.createTime[0].format('YYYY-MM-DD HH:mm:ss')
+      params.endTime = searchForm.createTime[1].format('YYYY-MM-DD HH:mm:ss')
+    }
+    
+    const { data } = await getOrderList(params)
+    tableData.value = data.records
+    pagination.total = data.total
+    pagination.current = data.current
+    pagination.pageSize = data.size
   } catch (error) {
+    console.error('获取订单列表失败:', error)
     message.error('获取数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 类型转换函数
+const asOrder = (record: Record<string, any>): Order => record as Order
+
+// 删除订单
+const handleDelete = async (record: Order) => {
+  try {
+    await deleteOrder(record.id)
+    message.success('删除成功')
+    // 如果当前页只有一条数据，且不是第一页，则跳转到上一页
+    if (tableData.value.length === 1 && pagination.current! > 1) {
+      pagination.current = (pagination.current || 1) - 1
+    }
+    fetchData()
+  } catch (error) {
+    console.error('删除订单失败:', error)
+    message.error('删除失败')
   }
 }
 

@@ -228,8 +228,16 @@ export const usePermissionStore = defineStore("permission", () => {
 
   // 重置路由
   const resetRoutes = () => {
+    // 清除路由和菜单状态
     routes.value = [];
     menus.value = [];
+
+    // 清除所有动态添加的路由
+    router.getRoutes().forEach(route => {
+      if (route.name && !constantRoutes.find(r => r.name === route.name)) {
+        router.removeRoute(route.name)
+      }
+    })
   };
 
   return {

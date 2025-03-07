@@ -271,6 +271,7 @@ import type { LoginParams, LoginType, CodeType } from '@/api/auth'
 import type { FormInstance } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { sendCode, register } from '@/api/auth'
+import { usePermissionStore } from '@/store'
 
 const router = useRouter()
 const route = useRoute()
@@ -528,6 +529,10 @@ const handleLogin = async () => {
       localStorage.removeItem('account')
       localStorage.removeItem('loginType')
     }
+
+    // 获取用户菜单并生成路由
+    const permissionStore = usePermissionStore()
+    await permissionStore.generateRoutes()
 
     message.success('登录成功')
     const redirect = route.query.redirect as string

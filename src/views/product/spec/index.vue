@@ -736,9 +736,9 @@ const handleAttributeModalCancel = () => {
 const handleManageValues = async (record: any) => {
   try {
     currentAttributeId.value = record.id
-    const res = await getSpecAttributeValueList(record.id)
-    originalAttributeValues.value = res
-    attributeValues.value = res.length > 0 ? res.map(item => item.value) : ['']
+    const {data} = await getSpecAttributeValueList(record.id)
+    originalAttributeValues.value = data || []
+    attributeValues.value = data && data.length > 0 ? data.map(item => item.value) : ['']
     valuesModalVisible.value = true
   } catch (error) {
     console.error('获取属性值列表失败:', error)
@@ -763,6 +763,7 @@ const handleValuesModalOk = async () => {
       existingValue => !validValues.includes(existingValue.value)
     )
     
+    // 批量删除不需要的属性值
     for (const valueToDelete of valuesToDelete) {
       await deleteSpecAttributeValue(valueToDelete.id)
     }

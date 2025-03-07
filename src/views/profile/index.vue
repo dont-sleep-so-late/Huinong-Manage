@@ -210,17 +210,17 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     submitting.value = true
     
-    const response = await updateProfile({
+    const {data} = await updateProfile({
       nickname: formState.nickname,
       phone: formState.phone,
       email: formState.email,
       avatar: formState.avatar
     })
     
-    console.log('更新个人信息响应:', response)
+    console.log('更新个人信息响应:', data)
     
     // 直接使用响应数据，因为API直接返回用户对象
-    const userResponse = response as unknown as UserInfo
+    const userResponse = data as unknown as UserInfo
     if (userResponse && userResponse.id) {
       // 更新用户信息到store
       await userStore.getUserInfo()

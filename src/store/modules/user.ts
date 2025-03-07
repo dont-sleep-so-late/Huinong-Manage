@@ -95,12 +95,20 @@ export const useUserStore = defineStore('user', () => {
     try {
       await userLogout()
     } finally {
+      // 清除用户信息
       token.value = ''
       userInfo.value = null
+      role.value = ''
+      
       // 清除 localStorage
       localStorage.removeItem(TOKEN)
       localStorage.removeItem(USER_INFO_KEY)
+      
       // 重置路由
+      const permissionStore = usePermissionStore()
+      await permissionStore.resetRoutes()
+      
+      // 重定向到登录页
       router.push('/login')
     }
   }

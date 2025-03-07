@@ -18,8 +18,10 @@ export type CodeType = 'login' | 'register' | 'reset'
 
 // 登录参数接口
 export interface LoginParams {
-  mobile: string
-  password: string
+  account?: string
+  password?: string
+  code?: string
+  loginType: LoginType
 }
 
 // 注册参数接口

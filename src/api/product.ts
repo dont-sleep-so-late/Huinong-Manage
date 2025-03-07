@@ -1,5 +1,7 @@
 import { request } from '@/utils/http'
 import { ApiResponse } from './auth'
+
+// 商品接口
 export interface Product {
   id: number
   name: string
@@ -7,20 +9,43 @@ export interface Product {
   mainImage: string
   detailImages: string[]
   categoryId: number
-  categoryName?: string
+  categoryName: string
   price: number
   stock: number
-  status: 0 | 1 // 0-下架 1-上架
-  salesVolume?: number
+  status: number
+  salesVolume: number
   region: string
   unit: string
   weight: number
-  auditStatus?: 0 | 1 | 2 // 0-待审核 1-已通过 2-已拒绝
+  createdTime: string
+  updatedTime: string
+  sellerId: number
+  sellerName: string
+  auditStatus: number
+  auditRemark: string | null
+}
+
+// 分页响应接口
+export interface PageResult<T> {
+  records: T[];
+  total: number;
+  size: number;
+  current: number;
+  pages: number;
+}
+
+// 审核参数接口
+export interface AuditParams {
+  id: number
+  auditStatus: 1 | 2
   auditRemark?: string
-  createdTime?: string
-  updatedTime?: string
-  sellerId?: number
-  sellerName?: string
+}
+
+// 批量审核参数接口
+export interface BatchAuditParams {
+  ids: number[]
+  auditStatus: 1 | 2
+  auditRemark?: string
 }
 
 export interface ProductSpec {
@@ -58,12 +83,6 @@ export interface ProductQuery {
   maxPrice?: number
   orderBy?: string
   orderType?: string
-}
-
-export interface AuditParams {
-  id: number
-  status: 1 | 2
-  auditRemark: string
 }
 
 // 获取商品列表（分页）
@@ -124,12 +143,19 @@ export function getCategories() {
 
 // 审核商品
 export function auditProduct(data: AuditParams) {
-  return request.put<ApiResponse<void>>(`/products/${data.id}/audit`, data)
+  return request.put<ApiResponse<void>>(`/products/${data.id}/audit`, {
+    auditStatus: data.auditStatus,
+    auditRemark: data.auditRemark
+  })
 }
 
 // 批量审核商品
-export function batchAuditProducts(data: { ids: number[]; status: 1 | 2; remark?: string }) {
-  return request.put<ApiResponse<void>>('/products/batch/audit', data)
+export function batchAuditProducts(data: BatchAuditParams) {
+  return request.put<ApiResponse<void>>('/products/batch/audit', {
+    ids: data.ids,
+    auditStatus: data.auditStatus,
+    auditRemark: data.auditRemark
+  })
 }
 
 // 获取待审核商品列表
