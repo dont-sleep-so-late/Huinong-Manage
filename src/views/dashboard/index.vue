@@ -1,547 +1,566 @@
 <template>
-  <div class="dashboard" v-if="false">
-    <!-- 统计卡片 -->
-    <a-row :gutter="16">
-      <a-col :span="6">
-        <a-card class="stat-card">
-          <a-statistic
-            title="今日订单"
-            :value="statistics.todayOrder"
-            :value-style="{ color: '#3f8600' }"
-          >
-            <template #prefix>
-              <shopping-outlined />
-            </template>
-            <template #suffix>
-              <span class="stat-text">单</span>
-            </template>
-          </a-statistic>
-          <div class="stat-footer">
-            <span>总订单：{{ statistics.totalOrder }}单</span>
-            <a-tag color="success">
-              <rise-outlined />
-              {{ statistics.orderGrowth }}%
-            </a-tag>
-          </div>
-        </a-card>
-      </a-col>
-      <a-col :span="6">
-        <a-card class="stat-card">
-          <a-statistic
-            title="今日销售额"
-            :value="statistics.todaySales"
-            :precision="2"
-            :value-style="{ color: '#cf1322' }"
-          >
-            <template #prefix>
-              <money-collect-outlined />
-            </template>
-            <template #suffix>
-              <span class="stat-text">元</span>
-            </template>
-          </a-statistic>
-          <div class="stat-footer">
-            <span>总销售额：{{ statistics.totalSales }}元</span>
-            <a-tag color="error">
-              <fall-outlined />
-              {{ statistics.salesGrowth }}%
-            </a-tag>
-          </div>
-        </a-card>
-      </a-col>
-      <a-col :span="6">
-        <a-card class="stat-card">
-          <a-statistic
-            title="今日新增用户"
-            :value="statistics.todayUser"
-            :value-style="{ color: '#1890ff' }"
-          >
-            <template #prefix>
-              <user-add-outlined />
-            </template>
-            <template #suffix>
-              <span class="stat-text">人</span>
-            </template>
-          </a-statistic>
-          <div class="stat-footer">
-            <span>总用户：{{ statistics.totalUser }}人</span>
-            <a-tag color="processing">
-              <rise-outlined />
-              {{ statistics.userGrowth }}%
-            </a-tag>
-          </div>
-        </a-card>
-      </a-col>
-      <a-col :span="6">
-        <a-card class="stat-card">
-          <a-statistic
-            title="待处理售后"
-            :value="statistics.pendingAfterSale"
-            :value-style="{ color: '#faad14' }"
-          >
-            <template #prefix>
-              <alert-outlined />
-            </template>
-            <template #suffix>
-              <span class="stat-text">单</span>
-            </template>
-          </a-statistic>
-          <div class="stat-footer">
-            <span>总售后：{{ statistics.totalAfterSale }}单</span>
-            <a-tag color="warning">
-              <fall-outlined />
-              {{ statistics.afterSaleGrowth }}%
-            </a-tag>
-          </div>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <!-- 图表 -->
-    <a-row :gutter="16" style="margin-top: 16px">
-      <a-col :span="12">
-        <a-card title="销售趋势">
-          <div ref="salesChart" style="height: 300px"></div>
-        </a-card>
-      </a-col>
-      <a-col :span="12">
-        <a-card title="商品分类占比">
-          <div ref="categoryChart" style="height: 300px"></div>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <!-- 表格 -->
-    <a-row :gutter="16" style="margin-top: 16px">
-      <a-col :span="12">
-        <a-card title="最新订单">
-          <a-table
-            :columns="orderColumns"
-            :data-source="latestOrders"
-            :pagination="false"
-          >
-            <!-- 订单状态 -->
-            <template #status="{ text }">
-              <a-tag :color="getOrderStatusColor(text)">
-                {{ getOrderStatusText(text) }}
-              </a-tag>
-            </template>
-
-            <!-- 操作 -->
-            <template #action="{ record }">
-              <a @click="handleOrderDetail(record)">查看</a>
-            </template>
-          </a-table>
-        </a-card>
-      </a-col>
-      <a-col :span="12">
-        <a-card title="热销商品">
-          <a-table
-            :columns="productColumns"
-            :data-source="hotProducts"
-            :pagination="false"
-          >
-            <!-- 商品图片 -->
-            <template #image="{ text }">
-              <a-image
-                :width="40"
-                :src="text"
-                :preview="{
-                  src: text
-                }"
+  <div class="dashboard">
+    <a-row :gutter="[16, 16]">
+      <!-- 农产品价格趋势图 -->
+      <a-col :span="24">
+        <a-card title="农产品价格趋势">
+          <template #extra>
+            <a-space>
+              <a-cascader
+                v-model:value="selectedProduct"
+                :options="productTree"
+                :field-names="{ label: 'label', value: 'id', children: 'children' }"
+                placeholder="搜索或选择农产品"
+                @change="handleProductChange"
+                :show-search="true"
+                :filter-option="filterOption"
+                style="width: 300px"
               />
-            </template>
+              <a-select
+                v-model:value="selectedProvince"
+                style="width: 120px"
+                placeholder="请选择省份"
+                @change="handleProvinceChange"
+              >
+                <a-select-option v-for="item in provinces" :key="item" :value="item">
+                  {{ item }}
+                </a-select-option>
+              </a-select>
+              <a-select
+                v-model:value="selectedMarket"
+                style="width: 200px"
+                placeholder="请选择市场名称"
+                @change="handleMarketChange"
+              >
+                <a-select-option v-for="market in markets" :key="market" :value="market">
+                  {{ market }}
+                </a-select-option>
+              </a-select>
+              <a-range-picker
+                v-model:value="dateRange"
+                :disabled-date="disabledDate"
+                @change="handleDateChange"
+              />
+            </a-space>
+          </template>
+          <div ref="priceChart" style="height: 400px; width: 100%;"></div>
+        </a-card>
+      </a-col>
+      <!-- 农产品价格分布图 -->
+      <a-col :span="16">
+        <a-card :title="`${currentDate}农产品价格分布图`">
+          <template #extra>
+            <a-cascader
+              v-model:value="selectedProduct2"
+              :options="productTree2"
+              :field-names="{ label: 'label', value: 'value', children: 'children' }"
+              placeholder="搜索或选择农产品"
+              @change="handleProductChange2"
+              :changeOnSelect="false"
+              :show-search="true"
+              :filter-option="filterOption"
+              style="width: 300px"
+            />
+          </template>
+          <div ref="priceMap" style="height: 450px; width: 100%;"></div>
+        </a-card>
+      </a-col>
 
-            <!-- 操作 -->
-            <template #action="{ record }">
-              <a @click="handleProductDetail(record)">查看</a>
-            </template>
-          </a-table>
+      <!-- 价格排行榜 -->
+      <a-col :span="8">
+        <a-card title="批发价格最高排名">
+          <div class="price-rank-list">
+            <div v-for="(item, index) in topMarkets" :key="index" class="price-rank-item">
+              <div class="rank-number" :class="{'top-three': index < 3}">{{ index + 1 }}</div>
+              <div class="market-info">
+                <div class="market-name">{{ item.marketName }}</div>
+                <div class="price-value">{{ item.todayPrice }}</div>
+              </div>
+              <div class="price-bar-container">
+                <div class="price-bar" :style="{ width: ((item.todayPrice / Math.max(...topMarkets.map(m => m.todayPrice))) * 100) + '%' }"></div>
+              </div>
+            </div>
+          </div>
+        </a-card>
+        <a-card :title="`${currentDate}批发价格最低排名`" class="mt-4">
+          <div class="price-rank-list">
+            <div v-for="(item, index) in bottomMarkets" :key="index" class="price-rank-item">
+              <div class="rank-number" :class="{'top-three': index < 3}">{{ index + 1 }}</div>
+              <div class="market-info">
+                <div class="market-name">{{ item.marketName }}</div>
+                <div class="price-value">{{ item.todayPrice }}</div>
+              </div>
+              <div class="price-bar-container">
+                <div class="price-bar price-bar-low" :style="{ width: ((item.todayPrice / Math.max(...bottomMarkets.map(m => m.todayPrice))) * 100) + '%' }"></div>
+              </div>
+            </div>
+          </div>
         </a-card>
       </a-col>
     </a-row>
-  </div>
-  <div style="width: 100%; height: 100%" v-else> 
-    <iframe src="https://ncpscxx.moa.gov.cn" width="100%" height="100%"></iframe>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
-import {
-  ShoppingOutlined,
-  MoneyCollectOutlined,
-  UserAddOutlined,
-  AlertOutlined,
-  RiseOutlined,
-  FallOutlined
-} from '@ant-design/icons-vue'
+import { ref, onMounted, nextTick } from 'vue'
+import dayjs, { Dayjs } from 'dayjs'
 import { message } from 'ant-design-vue'
+import type { SelectProps } from 'ant-design-vue'
+import type { DefaultOptionType } from 'ant-design-vue/es/cascader'
+import type { CascaderProps } from 'ant-design-vue'
 import * as echarts from 'echarts'
+import { getProductTree, getMarketList, getPriceTrend, getProductTreeList, getNewestMarketData } from '@/api/price'
+import chinaJson from '@/assets/map/china-contour.json'
 
-interface Statistics {
-  todayOrder: number
-  totalOrder: number
-  orderGrowth: number
-  todaySales: number
-  totalSales: number
-  salesGrowth: number
-  todayUser: number
-  totalUser: number
-  userGrowth: number
-  pendingAfterSale: number
-  totalAfterSale: number
-  afterSaleGrowth: number
-}
+// 注册地图数据
+echarts.registerMap('china', chinaJson as any)
 
-interface OrderInfo {
-  id: number
-  orderNo: string
-  username: string
-  amount: number
-  status: number
-  createTime: string
-}
+const currentDate = ref('')
+const topMarkets = ref<any[]>([])
+const bottomMarkets = ref<any[]>([])
+const priceMap = ref<HTMLElement>()
+let mapInstance: echarts.ECharts
+// 农产品价格趋势相关数据
+const productTree = ref<any[]>([])
+const productTree2 = ref<any[]>([])
+const provinces = ref<string[]>([])
+const markets = ref<string[]>([])
+const selectedProduct = ref<string[]>(['AE', 'AE01', 'AE01001'])
+const selectedProduct2 = ref<string[]>(['畜产品', '生猪产品', 'AL01002'])
+const selectedProvince = ref<string>()
+const selectedMarket = ref<string>()
+const dateRange = ref<[Dayjs, Dayjs]>([dayjs().subtract(3, 'week'), dayjs()])
+const priceChart = ref<HTMLElement>()
+let priceChartInstance: echarts.ECharts
 
-interface ProductInfo {
-  id: number
-  name: string
-  image: string
-  price: number
-  sales: number
-}
-
-// 统计数据
-const statistics = reactive<Statistics>({
-  todayOrder: 0,
-  totalOrder: 0,
-  orderGrowth: 0,
-  todaySales: 0,
-  totalSales: 0,
-  salesGrowth: 0,
-  todayUser: 0,
-  totalUser: 0,
-  userGrowth: 0,
-  pendingAfterSale: 0,
-  totalAfterSale: 0,
-  afterSaleGrowth: 0
-})
-
-// 订单表格列定义
-const orderColumns = [
-  {
-    title: '订单编号',
-    dataIndex: 'orderNo',
-    key: 'orderNo'
-  },
-  {
-    title: '用户名',
-    dataIndex: 'username',
-    key: 'username'
-  },
-  {
-    title: '金额',
-    dataIndex: 'amount',
-    key: 'amount',
-    customRender: ({ text }: { text: number }) => `¥${text.toFixed(2)}`
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    key: 'status',
-    slots: { customRender: 'status' }
-  },
-  {
-    title: '下单时间',
-    dataIndex: 'createTime',
-    key: 'createTime'
-  },
-  {
-    title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
-  }
-]
-
-// 商品表格列定义
-const productColumns = [
-  {
-    title: '商品图片',
-    dataIndex: 'image',
-    key: 'image',
-    slots: { customRender: 'image' }
-  },
-  {
-    title: '商品名称',
-    dataIndex: 'name',
-    key: 'name'
-  },
-  {
-    title: '价格',
-    dataIndex: 'price',
-    key: 'price',
-    customRender: ({ text }: { text: number }) => `¥${text.toFixed(2)}`
-  },
-  {
-    title: '销量',
-    dataIndex: 'sales',
-    key: 'sales'
-  },
-  {
-    title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
-  }
-]
-
-// 最新订单数据
-const latestOrders = ref<OrderInfo[]>([])
-
-// 热销商品数据
-const hotProducts = ref<ProductInfo[]>([])
-
-// 图表实例
-const salesChart = ref<HTMLElement>()
-const categoryChart = ref<HTMLElement>()
-let salesChartInstance: echarts.ECharts
-let categoryChartInstance: echarts.ECharts
-
-// 获取订单状态文本
-const getOrderStatusText = (status: number) => {
-  switch (status) {
-    case 0:
-      return '待付款'
-    case 1:
-      return '待发货'
-    case 2:
-      return '已发货'
-    case 3:
-      return '已完成'
-    case 4:
-      return '已取消'
-    default:
-      return '未知状态'
+// 获取农产品分类树
+const fetchProductTree = async () => {
+  try {
+    const { data: res } = await getProductTree()
+    if (res.code === 0) {
+      productTree.value = res.data
+    }
+  } catch (error) {
+    message.error('获取农产品分类失败')
   }
 }
 
-// 获取订单状态颜色
-const getOrderStatusColor = (status: number) => {
-  switch (status) {
-    case 0:
-      return 'warning'
-    case 1:
-      return 'processing'
-    case 2:
-      return 'success'
-    case 3:
-      return ''
-    case 4:
-      return 'error'
-    default:
-      return ''
+// 获取市场列表
+const fetchMarketList = async () => {
+  try {
+    const { data: res } = await getMarketList()
+    if (res.code === 0) {
+      const marketData = res.data
+      provinces.value = marketData.map((item: any) => item.province)
+    }
+  } catch (error) {
+    message.error('获取市场列表失败')
   }
 }
 
-// 查看订单详情
-const handleOrderDetail = (record: OrderInfo) => {
-  message.info('查看订单详情：' + record.orderNo)
+// 处理省份选择变化
+const handleProvinceChange: SelectProps['onChange'] = async (value) => {
+  if (typeof value !== 'string') return
+  selectedProvince.value = value
+  try {
+    const { data: res } = await getMarketList()
+    if (res.code === 0) {
+      const marketData = res.data
+      const provinceData = marketData.find((item: any) => item.province === value)
+      markets.value = provinceData ? provinceData.children : []
+      selectedMarket.value = ''
+      updatePriceTrend()
+    }
+  } catch (error) {
+    message.error('获取市场列表失败')
+  }
 }
 
-// 查看商品详情
-const handleProductDetail = (record: ProductInfo) => {
-  message.info('查看商品详情：' + record.name)
+// 处理市场选择变化
+const handleMarketChange: SelectProps['onChange'] = (value) => {
+  if (typeof value !== 'string') return
+  selectedMarket.value = value
+  updatePriceTrend()
 }
 
-// 初始化销售趋势图表
-const initSalesChart = () => {
-  if (!salesChart.value) return
-  salesChartInstance = echarts.init(salesChart.value)
+// 处理农产品选择变化
+const handleProductChange = () => {
+  updatePriceTrend()
+}
+
+// 处理日期范围变化
+const handleDateChange = () => {
+  updatePriceTrend()
+}
+
+// 禁用未来日期
+const disabledDate = (current: Dayjs) => {
+  return current && current > dayjs().endOf('day')
+}
+
+// 更新价格趋势图表
+const updatePriceTrend = async () => {
+  if (!selectedProduct.value || selectedProduct.value.length < 3) {
+    return
+  }
+  try {
+    const [startTime, endTime] = dateRange.value
+    const params = {
+      startTime: startTime.format('YYYYMMDD'),
+      endTime: endTime.format('YYYYMMDD'),
+      productId: selectedProduct.value[2],
+      productClass1Code: selectedProduct.value[0],
+      productClass2Code: selectedProduct.value[1],
+      marketName: selectedMarket.value,
+      province: selectedProvince.value,
+      timetype: 'r'
+    }
+
+    const { data: res } = await getPriceTrend(params)
+    if (res.code === 0) {
+      const { names, values } = res.data
+      initPriceChart(names, values[0])
+    }
+  } catch (error) {
+    message.error('获取价格趋势数据失败')
+  }
+}
+
+// 初始化价格趋势图表
+const initPriceChart = (dates: string[], prices: number[]) => {
+  if (!priceChart.value) return
+  if (!priceChartInstance) {
+    priceChartInstance = echarts.init(priceChart.value)
+  }
+
   const option = {
     tooltip: {
-      trigger: 'axis'
-    },
-    legend: {
-      data: ['订单数', '销售额']
+      trigger: 'axis',
+      formatter: '{b}<br/>{a}: ¥{c}'
     },
     xAxis: {
       type: 'category',
-      data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '订单数',
-        position: 'left'
-      },
-      {
-        type: 'value',
-        name: '销售额',
-        position: 'right',
-        axisLabel: {
-          formatter: '{value} 元'
-        }
+      data: dates,
+      axisLabel: {
+        interval: 'auto',
+        rotate: 45
       }
-    ],
+    },
+    yAxis: {
+      type: 'value',
+      name: '价格(元/kg)',
+      axisLabel: {
+        formatter: '¥{value}'
+      }
+    },
     series: [
       {
-        name: '订单数',
+        name: '批发价',
         type: 'line',
-        data: [150, 230, 224, 218, 135, 147, 260]
-      },
-      {
-        name: '销售额',
-        type: 'line',
-        yAxisIndex: 1,
-        data: [15000, 23000, 22400, 21800, 13500, 14700, 26000]
+        data: prices,
+        smooth: true,
+        markPoint: {
+          data: [
+            { type: 'max', name: '最高价' },
+            { type: 'min', name: '最低价' }
+          ]
+        }
       }
     ]
   }
-  salesChartInstance.setOption(option)
+
+  priceChartInstance.setOption(option)
 }
 
-// 初始化商品分类占比图表
-const initCategoryChart = () => {
-  if (!categoryChart.value) return
-  categoryChartInstance = echarts.init(categoryChart.value)
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: '50%',
-        data: [
-          { value: 1048, name: '蔬菜水果' },
-          { value: 735, name: '肉禽蛋品' },
-          { value: 580, name: '水产海鲜' },
-          { value: 484, name: '粮油调味' },
-          { value: 300, name: '休闲食品' }
-        ],
+// 获取农产品分类树
+const fetchProductTree2 = async () => {
+  try {
+    const { data: res } = await getProductTreeList()
+    if (res.code === 0) {
+      console.log('原始数据:', res.data)
+      
+      // 定义树节点类型
+      interface TreeNode {
+        label: string;
+        value: string;
+        children?: TreeNode[];
+      }
+
+      // 处理数据结构，转换为级联选择器需要的格式
+      const processTreeData = (items: any): TreeNode[] => {
+        if (!items || !items.children) return []
+        
+        return items.children
+          .filter((child: any) => child && child.label && child.code)
+          .map((child: any) => {
+            const firstLevel: TreeNode = {
+              label: child.label,
+              value: child.code,
+              children: []
+            }
+            
+            if (Array.isArray(child.children)) {
+              firstLevel.children = child.children
+                .filter((subChild: any) => subChild && subChild.label && subChild.code)
+                .map((subChild: any) => {
+                  const secondLevel: TreeNode = {
+                    label: subChild.label,
+                    value: subChild.code,
+                    children: []
+                  }
+                  
+                  if (Array.isArray(subChild.children)) {
+                    secondLevel.children = subChild.children
+                      .filter((leaf: any) => leaf && leaf.label && leaf.code)
+                      .map((leaf: any) => ({
+                        label: leaf.label,
+                        value: leaf.code
+                      }))
+                  }
+                  
+                  return secondLevel
+                })
+            }
+            
+            return firstLevel
+          })
+      }
+
+      const processedData = processTreeData(res.data)
+      console.log('处理后的数据:', processedData)
+      productTree2.value = processedData
+    }
+  } catch (error) {
+    console.error('获取农产品分类失败:', error)
+    message.error('获取农产品分类失败')
+  }
+}
+
+// 更新价格分布地图
+const updatePriceMap = async (data: any[]) => {
+  if (!priceMap.value || data.length === 0) return
+  
+  await nextTick()
+  
+  if (!mapInstance) {
+    mapInstance = echarts.init(priceMap.value)
+  }
+
+  try {
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: any) => {
+          const { name, value } = params
+          if (!value) return name
+          return `${name}<br/>价格：¥${value[2]}/kg<br/>涨跌：${value[3]}%`
+        }
+      },
+      visualMap: {
+        min: Math.min(...data.map(item => item.todayPrice)),
+        max: Math.max(...data.map(item => item.todayPrice)),
+        calculable: true,
+        inRange: {
+          color: ['#50a3ba', '#eac736', '#d94e5d']
+        }
+      },
+      geo: {
+        map: 'china',
+        roam: true,
         emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          label: {
+            show: true
           }
         }
-      }
-    ]
-  }
-  categoryChartInstance.setOption(option)
-}
+      },
+      series: [{
+        name: '价格分布',
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: data.map(item => ({
+          name: item.marketName,
+          value: [
+            Number(item.longitude),
+            Number(item.latitude),
+            item.todayPrice,
+            item.priceHb
+          ]
+        })),
+        symbolSize: 12,
+        emphasis: {
+          label: {
+            show: true
+          }
+        }
+      }]
+    }
 
-// 获取统计数据
-const fetchStatistics = async () => {
-  try {
-    // TODO: 调用统计API
-    // 模拟数据
-    Object.assign(statistics, {
-      todayOrder: 128,
-      totalOrder: 1580,
-      orderGrowth: 12.5,
-      todaySales: 12800,
-      totalSales: 158000,
-      salesGrowth: -5.2,
-      todayUser: 25,
-      totalUser: 1200,
-      userGrowth: 8.3,
-      pendingAfterSale: 8,
-      totalAfterSale: 120,
-      afterSaleGrowth: -2.1
-    })
+    mapInstance.setOption(option)
   } catch (error) {
-    message.error('获取统计数据失败')
-  }
-}
-
-// 获取最新订单
-const fetchLatestOrders = async () => {
-  try {
-    // TODO: 调用查询API
-    // 模拟数据
-    latestOrders.value = [
-      {
-        id: 1,
-        orderNo: '202401010001',
-        username: '张三',
-        amount: 209,
-        status: 1,
-        createTime: '2024-01-01 00:00:00'
-      }
-    ]
-  } catch (error) {
-    message.error('获取最新订单失败')
+    console.error('更新地图失败:', error)
+    message.error('更新地图失败')
   }
 }
 
-// 获取热销商品
-const fetchHotProducts = async () => {
+// 处理农产品选择变化
+const handleProductChange2: CascaderProps['onChange'] = async (value, selectedOptions) => {
+  if (!selectedOptions || selectedOptions.length === 0) return
+  
+  const lastSelected = selectedOptions[selectedOptions.length - 1] as DefaultOptionType
+  if (!lastSelected || typeof lastSelected.value !== 'string') return
+  
   try {
-    // TODO: 调用查询API
-    // 模拟数据
-    hotProducts.value = [
-      {
-        id: 1,
-        name: '有机蔬菜礼盒',
-        image: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
-        price: 199,
-        sales: 1580
+    const { data: res } = await getNewestMarketData(lastSelected.value)
+    if (res.code === 0) {
+      currentDate.value = res.data.today || ''
+      topMarkets.value = res.data.uplist || []
+      bottomMarkets.value = res.data.downlist || []
+      if (res.data.uplist?.length > 0 || res.data.downlist?.length > 0) {
+        await updatePriceMap([...(res.data.uplist || []), ...(res.data.downlist || [])])
+      } else {
+        message.warning('暂无该农产品的价格数据')
       }
-    ]
+    }
   } catch (error) {
-    message.error('获取热销商品失败')
+    console.error('获取价格数据失败:', error)
+    message.error('获取价格数据失败')
   }
+}
+
+// 添加 filterOption 函数
+const filterOption = (inputValue: string, path: DefaultOptionType[]) => {
+  return path.some(option => {
+    // 将输入和选项文本都转换为小写，去除空格后进行匹配
+    const label = String(option.label).toLowerCase().trim()
+    const input = inputValue.toLowerCase().trim()
+    return label.includes(input)
+  })
 }
 
 // 初始化
-onMounted(() => {
-  fetchStatistics()
-  fetchLatestOrders()
-  fetchHotProducts()
-  initSalesChart()
-  initCategoryChart()
-
+onMounted(async () => {
+  await fetchProductTree()
+  await fetchProductTree2()
+  await fetchMarketList()
+  await updatePriceTrend()
+  
+  // 初始化价格分布图数据
+  if (selectedProduct2.value.length > 0) {
+    const lastValue = selectedProduct2.value[selectedProduct2.value.length - 1]
+    await getNewestMarketData(lastValue).then(({ data: res }) => {
+      if (res.code === 0) {
+        currentDate.value = res.data.today || ''
+        topMarkets.value = res.data.uplist || []
+        bottomMarkets.value = res.data.downlist || []
+        if (res.data.uplist?.length > 0 || res.data.downlist?.length > 0) {
+          updatePriceMap([...(res.data.uplist || []), ...(res.data.downlist || [])])
+        }
+      }
+    }).catch((error) => {
+      console.error('初始化价格分布图数据失败:', error)
+      message.error('初始化价格分布图数据失败')
+    })
+  }
+  
   // 监听窗口大小变化，重绘图表
   window.addEventListener('resize', () => {
-    salesChartInstance?.resize()
-    categoryChartInstance?.resize()
+    priceChartInstance?.resize()
+    mapInstance?.resize()
   })
 })
 </script>
 
 <style lang="less" scoped>
 .dashboard {
-  .stat-card {
-    :deep(.ant-statistic-title) {
-      margin-bottom: 8px;
-    }
+  padding: 24px;
+}
 
-    :deep(.ant-statistic-content) {
-      .anticon {
-        margin-right: 8px;
-        font-size: 24px;
-      }
-    }
+.mt-4 {
+  margin-top: 16px;
+}
 
-    .stat-text {
-      margin-left: 8px;
-      font-size: 14px;
-      color: rgba(0, 0, 0, 0.45);
-    }
+.price-rank-list {
+  padding: 8px;
+}
 
-    .stat-footer {
-      margin-top: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: rgba(0, 0, 0, 0.45);
-    }
+.price-rank-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.rank-number {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: #f0f0f0;
+  border-radius: 4px;
+  margin-right: 12px;
+  font-size: 14px;
+  color: #666;
+  
+  &.top-three {
+    background: #ff4d4f;
+    color: white;
+  }
+}
+
+.market-info {
+  flex: 1;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+
+.market-name {
+  font-size: 14px;
+  color: #333;
+  margin-right: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.price-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: bold;
+  &::before {
+    content: '¥';
+    margin-right: 2px;
+  }
+}
+
+.price-bar-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  padding-left: 36px;
+  z-index: 0;
+}
+
+.price-bar {
+  height: 100%;
+  background: rgba(255, 77, 79, 0.1);
+  border-radius: 2px;
+}
+
+.price-bar-low {
+  background: rgba(82, 196, 26, 0.1);
+}
+
+.price-change {
+  &.up {
+    color: #f5222d;
+  }
+  &.down {
+    color: #52c41a;
   }
 }
 </style> 
