@@ -63,3 +63,41 @@ export function getNewestMarketData(varietyCode: string) {
       }
     })
   }
+
+  // 获取新闻列表
+  export function getNewsList(params: {
+    page: number;
+    rows: number;
+    type?: string;
+    isLatestMessage?: boolean;
+    channel?: string;
+    source?: string;
+    time?: string;
+  }) {
+    return axios.post('http://zdscxx.moa.gov.cn:8080/nyb/getMessages', 
+      {
+        ...params,
+        type: '最新发布',
+        isLatestMessage: true
+      },
+      {
+        headers: {
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        }
+      }
+    )
+  }
+
+  // 获取新闻详情
+  export function getNewsDetail(id: string) {
+    return axios.post('http://zdscxx.moa.gov.cn:8080/nyb/getMessagesById',
+      `id=${id}`,
+      {
+        headers: {
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        }
+      }
+    )
+  }

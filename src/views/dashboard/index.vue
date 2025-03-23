@@ -1,8 +1,8 @@
 <template>
   <div class="dashboard">
-    <a-row :gutter="[16, 16]">
+    <a-row :gutter="[4, 4]">
       <!-- 农产品价格趋势图 -->
-      <a-col :span="24">
+      <a-col :span="16">
         <a-card title="农产品价格趋势">
           <template #extra>
             <a-space>
@@ -14,7 +14,7 @@
                 @change="handleProductChange"
                 :show-search="true"
                 :filter-option="filterOption"
-                style="width: 300px"
+                style="width: 220px"
               />
               <a-select
                 v-model:value="selectedProvince"
@@ -28,7 +28,7 @@
               </a-select>
               <a-select
                 v-model:value="selectedMarket"
-                style="width: 200px"
+                style="width: 220px"
                 placeholder="请选择市场名称"
                 @change="handleMarketChange"
               >
@@ -46,6 +46,13 @@
           <div ref="priceChart" style="height: 400px; width: 100%;"></div>
         </a-card>
       </a-col>
+      <!-- 最新消息 -->
+      <a-col :span="8">
+        <a-card title="农产品市场动态">
+          <NewsList />
+        </a-card>
+      </a-col>
+      
       <!-- 农产品价格分布图 -->
       <a-col :span="16">
         <a-card :title="`${currentDate}农产品价格分布图`">
@@ -111,6 +118,7 @@ import type { CascaderProps } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import { getProductTree, getMarketList, getPriceTrend, getProductTreeList, getNewestMarketData } from '@/api/price'
 import chinaJson from '@/assets/map/china-contour.json'
+import NewsList from '@/components/NewsList.vue'
 
 // 注册地图数据
 echarts.registerMap('china', chinaJson as any)
@@ -467,6 +475,7 @@ onMounted(async () => {
     priceChartInstance?.resize()
     mapInstance?.resize()
   })
+
 })
 </script>
 

@@ -72,6 +72,7 @@ declare module 'vue' {
     IconProvider: typeof import('./src/components/IconProvider.vue')['default']
     ImageUpload: typeof import('./src/components/ImageUpload/ImageUpload.vue')['default']
     MessageNotification: typeof import('./src/components/MessageNotification.vue')['default']
+    NewsList: typeof import('./src/components/NewsList.vue')['default']
     NotFound: typeof import('./src/components/NotFound.vue')['default']
     PlusOutlined: typeof import('@ant-design/icons-vue')['PlusOutlined']
     PriceDistribution: typeof import('./src/components/PriceDistribution.vue')['default']
