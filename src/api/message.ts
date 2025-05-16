@@ -1,5 +1,8 @@
-import { request } from '@/utils/http'
+import request from '@/utils/http'
+import type { AxiosResponse } from 'axios'
+import type { PageResult } from '@/types/api'
 import { ApiResponse } from './auth'
+
 // 消息类型定义
 export interface Message {
   id: number
@@ -34,8 +37,11 @@ export interface PageResult<T> {
  * @param params 查询参数
  * @returns 消息列表分页数据
  */
-export function getMessageList(params: MessageQuery) {
-  return request.get<ApiResponse<PageResult<Message>>>('/messages', { params })
+export function getMessageList(params: {
+  pageNum: number
+  pageSize: number
+}) {
+  return request.get<PageResult<Message>>('/messages', { params })
 }
 
 /**
@@ -45,16 +51,33 @@ export function getMessageList(params: MessageQuery) {
  */
 export function getUnreadMessageCount(type?: 1 | 2 | 3) {
   const params = type ? { type } : {}
-  return request.get<ApiResponse<number>>('/messages/unread/count', { params })
+  return request.get<number>('/messages/unread/count', { params })
 }
 
 /**
- * 批量标记消息为已读
+ * 标记消息已读
+ * @param id 消息ID
+ * @returns 标记成功的消息数量
+ */
+export function markMessageAsRead(id: number) {
+  return request.put<number>(`/message/read/${id}`)
+}
+
+/**
+ * 批量标记消息已读
  * @param ids 消息ID列表
  * @returns 标记成功的消息数量
  */
 export function batchMarkMessagesAsRead(ids: number[]) {
-  return request.put<ApiResponse<number>>('/messages/batch/read', ids)
+  return request.put<number>('/messages/batch/read', { ids })
+}
+
+/**
+ * 标记所有消息已读
+ * @returns 标记成功的消息数量
+ */
+export function markAllMessagesAsRead() {
+  return request.put<number>('/messages/read/all')
 }
 
 /**
@@ -63,5 +86,5 @@ export function batchMarkMessagesAsRead(ids: number[]) {
  * @returns 删除成功的消息数量
  */
 export function batchDeleteMessages(ids: number[]) {
-  return request.delete<ApiResponse<number>>('/messages/batch', { data: ids })
+  return request.delete<number>('/messages/batch', { data: ids })
 } 

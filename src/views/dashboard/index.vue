@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <a-row :gutter="[4, 4]">
+    <a-row :gutter="[4, 8]">
       <!-- 农产品价格趋势图 -->
       <a-col :span="16">
         <a-card title="农产品价格趋势">
@@ -14,11 +14,11 @@
                 @change="handleProductChange"
                 :show-search="true"
                 :filter-option="filterOption"
-                style="width: 220px"
+                style="width: 260px"
               />
               <a-select
                 v-model:value="selectedProvince"
-                style="width: 120px"
+                style="width: 140px"
                 placeholder="请选择省份"
                 @change="handleProvinceChange"
               >
@@ -28,7 +28,7 @@
               </a-select>
               <a-select
                 v-model:value="selectedMarket"
-                style="width: 220px"
+                style="width: 240px"
                 placeholder="请选择市场名称"
                 @change="handleMarketChange"
               >
@@ -36,7 +36,15 @@
                   {{ market }}
                 </a-select-option>
               </a-select>
+            </a-space>
+            <a-space style="margin-top: 10px;">
+              <a-radio-group v-model:value="timeDimension" @change="handleTimeDimensionChange">
+                <a-radio-button value="r">日</a-radio-button>
+                <a-radio-button value="w">周</a-radio-button>
+                <a-radio-button value="m">月</a-radio-button>
+              </a-radio-group>
               <a-range-picker
+                :picker="timeDimension === 'r' ? 'date' : timeDimension === 'w' ? 'week' : 'month'"
                 v-model:value="dateRange"
                 :disabled-date="disabledDate"
                 @change="handleDateChange"
@@ -111,6 +119,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, nextTick } from 'vue'
 import dayjs, { Dayjs } from 'dayjs'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
 import { message } from 'ant-design-vue'
 import type { SelectProps } from 'ant-design-vue'
 import type { DefaultOptionType } from 'ant-design-vue/es/cascader'
@@ -119,6 +128,9 @@ import * as echarts from 'echarts'
 import { getProductTree, getMarketList, getPriceTrend, getProductTreeList, getNewestMarketData } from '@/api/price'
 import chinaJson from '@/assets/map/china-contour.json'
 import NewsList from '@/components/NewsList.vue'
+
+// 注册dayjs插件
+dayjs.extend(weekOfYear)
 
 // 注册地图数据
 echarts.registerMap('china', chinaJson as any)
@@ -137,6 +149,7 @@ const selectedProduct = ref<string[]>(['AE', 'AE01', 'AE01001'])
 const selectedProduct2 = ref<string[]>(['畜产品', '生猪产品', 'AL01002'])
 const selectedProvince = ref<string>()
 const selectedMarket = ref<string>()
+const timeDimension = ref<string>('r')
 const dateRange = ref<[Dayjs, Dayjs]>([dayjs().subtract(3, 'week'), dayjs()])
 const priceChart = ref<HTMLElement>()
 let priceChartInstance: echarts.ECharts
@@ -198,6 +211,12 @@ const handleProductChange = () => {
 
 // 处理日期范围变化
 const handleDateChange = () => {
+
+  updatePriceTrend()
+}
+
+// 处理日期规格变化
+const handleTimeDimensionChange = () => {
   updatePriceTrend()
 }
 
@@ -212,16 +231,33 @@ const updatePriceTrend = async () => {
     return
   }
   try {
-    const [startTime, endTime] = dateRange.value
+    const [startTime, endTime] = dateRange.value;
+    let start = '', end = '';
+    switch (timeDimension.value) {
+    case 'r':
+      start = startTime.format('YYYYMMDD')
+      end = endTime.format('YYYYMMDD')
+      break
+    case 'w':
+      start = `${startTime.format('YYYY')}${startTime.week()}`
+      end = `${endTime.format('YYYY')}${endTime.week()}`
+      break
+    case 'm':
+      start = startTime.format('YYYYMM')
+      end = endTime.format('YYYYMM')
+      break
+    default:
+      break
+  }
     const params = {
-      startTime: startTime.format('YYYYMMDD'),
-      endTime: endTime.format('YYYYMMDD'),
+      startTime: start,
+      endTime: end,
       productId: selectedProduct.value[2],
       productClass1Code: selectedProduct.value[0],
       productClass2Code: selectedProduct.value[1],
       marketName: selectedMarket.value,
       province: selectedProvince.value,
-      timetype: 'r'
+      timetype: timeDimension.value
     }
 
     const { data: res } = await getPriceTrend(params)

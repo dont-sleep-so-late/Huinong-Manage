@@ -1,8 +1,8 @@
 <template>
   <div class="login-container">
-    <div class="login-box" :class="{ 'right-panel-active': isSignUpMode }">
+    <div class="login-box">
       <!-- 登录表单 -->
-      <div class="form-container sign-in-container">
+      <div class="form-container sign-in-container" v-if="activeForm === 'login'">
         <div class="form-content">
           <h1>惠农商城后台管理系统</h1>
           <a-form
@@ -101,7 +101,7 @@
       </div>
 
       <!-- 注册表单 -->
-      <div class="form-container sign-up-container">
+      <div class="form-container sign-up-container" v-if="activeForm === 'register'">
         <div class="form-content">
           <h1>注册</h1>
           <a-form
@@ -232,20 +232,25 @@
         </div>
       </div>
 
+      <!-- 忘记密码表单 -->
+      <div class="form-container forgot-password-container" v-if="activeForm === 'forgot'">
+        <ForgotPasswordForm @backToLogin="showLogin" />
+      </div>
+
       <!-- 遮罩层 -->
       <div class="overlay-container">
         <div class="overlay">
           <div class="overlay-panel overlay-left">
             <h1>欢迎回来！</h1>
             <p>请使用您的账号登录系统</p>
-            <a-button ghost size="large" @click="isSignUpMode = false">
+            <a-button ghost size="large" @click="showLogin">
               去登录
             </a-button>
           </div>
           <div class="overlay-panel overlay-right">
             <h1>你好！</h1>
             <p>立即注册账号，开启您的购物之旅</p>
-            <a-button ghost size="large" @click="isSignUpMode = true">
+            <a-button ghost size="large" @click="showRegister">
               去注册
             </a-button>
           </div>
@@ -272,13 +277,14 @@ import type { FormInstance } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { sendCode, register } from '@/api/auth'
 import { usePermissionStore } from '@/store'
+import ForgotPasswordForm from '@/components/ForgotPasswordForm.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-// 是否为注册模式
-const isSignUpMode = ref(false)
+// 新增activeForm变量，替代isSignUpMode
+const activeForm = ref<'login' | 'register' | 'forgot'>('login')
 
 // 加载状态
 const loading = ref(false)
@@ -544,9 +550,14 @@ const handleLogin = async () => {
   }
 }
 
-// 处理忘记密码
+// 登录/注册/忘记密码切换方法
+const showLogin = () => { activeForm.value = 'login' }
+const showRegister = () => { activeForm.value = 'register' }
+const showForgot = () => { activeForm.value = 'forgot' }
+
+// 修改handleForgotPassword
 const handleForgotPassword = () => {
-  router.push('/forgot-password')
+  activeForm.value = 'forgot'
 }
 
 // 处理注册方式切换
@@ -616,7 +627,7 @@ const handleRegister = async () => {
 
     await register(registerParams)
     message.success('注册成功')
-    isSignUpMode.value = false
+    activeForm.value = 'login'
   } catch (error: any) {
     message.error(error.message || '注册失败')
   } finally {

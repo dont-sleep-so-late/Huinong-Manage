@@ -74,7 +74,7 @@ const newsDetail = ref<NewsDetail>({
 const modalVisible = ref(false)
 const pagination = ref<PaginationProps>({
   current: 1,
-  pageSize: 10,
+  pageSize: 5,
   total: 0,
   onChange: (page: number, pageSize: number) => {
     pagination.value.current = page
@@ -87,7 +87,7 @@ const fetchNewsList = async () => {
   try {
     const { data } = await getNewsList({
       page: pagination.value.current || 1,
-      rows: pagination.value.pageSize || 10
+      rows: pagination.value.pageSize || 5
     })
     if (data.message === 'success') {
       newsList.value = data.result.table

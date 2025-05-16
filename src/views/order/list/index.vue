@@ -122,7 +122,7 @@
     <a-modal
       v-model:open="detailVisible"
       title="订单详情"
-      width="800px"
+      width="1400px"
       :footer="null"
     >
       <a-descriptions bordered>
@@ -775,7 +775,6 @@ fetchData()
   .product-image {
     width: 64px;
     height: 64px;
-    object-fit: cover;
   }
 
   .timeline-time {

@@ -4,6 +4,7 @@ import { login as userLogin, logout as userLogout, getUserInfo as fetchUserInfo,
 import type { LoginParams, LoginResponse, UserInfoResponse } from '@/api/auth'
 import { usePermissionStore } from '@/store/modules/permission'
 import router from '@/router'
+import { wsClient } from '@/utils/websocket'
 
 const TOKEN = 'token'
 const USER_INFO_KEY = 'user_info'
@@ -63,6 +64,10 @@ export const useUserStore = defineStore('user', () => {
       localStorage.setItem(TOKEN, data.token)
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.userInfo))
 
+      // 连接WebSocket
+      console.log('登录成功，连接WebSocket')
+      wsClient.connect(data.token)
+
       console.log('登录成功，用户信息已保存')
       return data
     } catch (error) {
@@ -95,6 +100,9 @@ export const useUserStore = defineStore('user', () => {
     try {
       await userLogout()
     } finally {
+      // 关闭WebSocket连接
+      wsClient.close()
+      
       // 清除用户信息
       token.value = ''
       userInfo.value = null

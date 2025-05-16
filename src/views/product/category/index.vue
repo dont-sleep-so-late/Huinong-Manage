@@ -118,6 +118,7 @@
               children: 'children'
             }"
             :disabled="isEdit"
+            change-on-select
           />
         </a-form-item>
         <a-form-item label="分类名称" name="name">

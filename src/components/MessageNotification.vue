@@ -57,6 +57,7 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { getMessageList, getUnreadMessageCount, batchMarkMessagesAsRead, type Message } from '@/api/message'
 import IconProvider from '@/components/IconProvider.vue'
+import { wsClient } from '@/utils/websocket'
 
 export default defineComponent({
   name: 'MessageNotification',
@@ -77,6 +78,20 @@ export default defineComponent({
     const activeTab = ref('0')
     const messageList = ref<Message[]>([])
     let timer: number | null = null
+
+    // 处理WebSocket消息
+    const handleWebSocketMessage = (message: any) => {
+      // 更新未读消息数量
+      fetchUnreadCount()
+      
+      // 如果消息面板打开，则刷新消息列表
+      if (visible.value) {
+        fetchMessages()
+      }
+      
+      // 显示消息提示
+      message.info(message.content)
+    }
 
     // 获取未读消息数量
     const fetchUnreadCount = async () => {
@@ -232,6 +247,9 @@ export default defineComponent({
           fetchMessages()
         }
       }, props.refreshInterval)
+
+      // 注册WebSocket消息处理器
+      wsClient.on('NEW_MESSAGE', handleWebSocketMessage)
     })
 
     onUnmounted(() => {
