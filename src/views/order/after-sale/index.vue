@@ -3,13 +3,13 @@
     <!-- 搜索表单 -->
     <a-card class="search-card" :bordered="false">
       <a-form layout="inline" :model="searchForm">
-        <a-form-item label="售后编号">
+        <!-- <a-form-item label="售后编号">
           <a-input
             v-model:value="searchForm.refundNo"
             placeholder="请输入售后编号"
             allow-clear
           />
-        </a-form-item>
+        </a-form-item> -->
         <a-form-item label="订单编号">
           <a-input
             v-model:value="searchForm.orderNo"
@@ -24,10 +24,10 @@
             style="width: 120px"
             allow-clear
           >
-            <a-select-option :value="0">待处理</a-select-option>
-            <a-select-option :value="1">处理中</a-select-option>
-            <a-select-option :value="2">已完成</a-select-option>
-            <a-select-option :value="3">已拒绝</a-select-option>
+            <a-select-option value="PENDING">待处理</a-select-option>
+            <a-select-option value="PROCESSING">处理中</a-select-option>
+            <a-select-option value="COMPLETED">已完成</a-select-option>
+            <a-select-option value="REJECTED">已拒绝</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="售后类型">
@@ -100,18 +100,18 @@
           <template v-else-if="column.key === 'action'">
             <a-space>
               <a @click="handleDetail(record)">详情</a>
-              <template v-if="record.status === 0">
+              <template v-if="record.status === 'PENDING'">
                 <a-divider type="vertical" />
                 <a @click="handleAudit(record)">审核</a>
               </template>
-              <template v-if="record.status === 1 && record.type === 2">
+              <template v-if="record.status === 'PROCESSING' && record.type === 2">
                 <a-divider type="vertical" />
                 <a @click="handleReceive(record)">确认收货</a>
               </template>
-              <template v-if="record.status === 1 && record.type !== 3">
+              <!-- <template v-if="record.status === 'PENDING' && record.type !== 3">
                 <a-divider type="vertical" />
                 <a @click="handleRefund(record)">退款</a>
-              </template>
+              </template> -->
             </a-space>
           </template>
         </template>
@@ -143,7 +143,7 @@
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="申请金额">
-          ¥{{ currentRecord?.amount?.toFixed(2) }}
+          ¥{{ currentRecord?.refundAmount?.toFixed(2) }}
         </a-descriptions-item>
         <a-descriptions-item label="申请时间">
           {{ currentRecord?.createTime }}
@@ -157,20 +157,8 @@
         <a-descriptions-item label="申请原因">
           {{ currentRecord?.reason }}
         </a-descriptions-item>
-        <a-descriptions-item label="问题描述">
-          {{ currentRecord?.description }}
-        </a-descriptions-item>
-        <a-descriptions-item label="凭证图片">
-          <a-image-preview-group>
-            <a-space>
-              <a-image
-                v-for="(image, index) in currentRecord?.images"
-                :key="index"
-                :width="64"
-                :src="image"
-              />
-            </a-space>
-          </a-image-preview-group>
+        <a-descriptions-item label="拒绝原因" v-if="currentRecord?.rejectReason">
+          {{ currentRecord?.rejectReason }}
         </a-descriptions-item>
       </a-descriptions>
 
@@ -181,11 +169,8 @@
           <a-descriptions-item label="处理结果">
             {{ currentRecord?.status === 3 ? '拒绝' : '同意' }}
           </a-descriptions-item>
-          <a-descriptions-item label="处理说明">
-            {{ currentRecord?.handleNote }}
-          </a-descriptions-item>
           <a-descriptions-item label="处理时间">
-            {{ currentRecord?.handleTime }}
+            {{ currentRecord?.updateTime }}
           </a-descriptions-item>
         </a-descriptions>
       </template>
@@ -255,7 +240,7 @@
           <a-input-number
             v-model:value="refundForm.amount"
             :min="0"
-            :max="currentRecord?.amount"
+            :max="currentRecord?.refundAmount"
             :precision="2"
             style="width: 100%"
             placeholder="请输入退款金额"
@@ -289,29 +274,13 @@ import {
 import { message } from 'ant-design-vue'
 import type { TablePaginationConfig } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
-
-interface AfterSaleInfo {
-  id: number
-  refundNo: string
-  orderNo: string
-  status: number
-  type: number
-  amount: number
-  reason: string
-  description: string
-  images: string[]
-  createTime: string
-  handleNote?: string
-  handleTime?: string
-  refundAmount?: number
-  refundType?: number
-  refundTime?: string
-}
+import { getRefundOrderList, handleRefund as handleRefundApi, confirmReceive, processRefund, exportRefundOrders } from '@/api/refund'
+import type { RefundOrder, RefundOrderQuery, RefundHandleParams, RefundParams } from '@/types/order'
 
 interface SearchForm {
   refundNo?: string
   orderNo?: string
-  status?: number
+  status?: string // PENDING-待处理，PROCESSING-处理中，COMPLETED-已完成，REJECTED-已拒绝
   type?: number
   createTime?: [Dayjs, Dayjs]
   pageNum: number
@@ -332,11 +301,6 @@ interface RefundForm {
 // 表格列定义
 const columns = [
   {
-    title: '售后编号',
-    dataIndex: 'refundNo',
-    key: 'refundNo'
-  },
-  {
     title: '订单编号',
     dataIndex: 'orderNo',
     key: 'orderNo'
@@ -347,14 +311,14 @@ const columns = [
     key: 'status'
   },
   {
-    title: '售后类型',
-    dataIndex: 'type',
-    key: 'type'
+    title: '申请金额',
+    dataIndex: 'refundAmount',
+    key: 'refundAmount'
   },
   {
-    title: '申请金额',
-    dataIndex: 'amount',
-    key: 'amount'
+    title: '申请原因',
+    dataIndex: 'reason',
+    key: 'reason'
   },
   {
     title: '申请时间',
@@ -380,7 +344,7 @@ const searchForm = reactive<SearchForm>({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<AfterSaleInfo[]>([])
+const tableData = ref<RefundOrder[]>([])
 const pagination = reactive<TablePaginationConfig>({
   total: 0,
   current: 1,
@@ -391,7 +355,7 @@ const pagination = reactive<TablePaginationConfig>({
 
 // 详情弹窗
 const detailVisible = ref(false)
-const currentRecord = ref<AfterSaleInfo>()
+const currentRecord = ref<RefundOrder>()
 
 // 审核弹窗
 const auditVisible = ref(false)
@@ -428,15 +392,15 @@ const refundRules = {
 }
 
 // 获取状态颜色
-const getStatusColor = (status?: number) => {
+const getStatusColor = (status?: string) => {
   switch (status) {
-    case 0:
+    case 'PENDING':
       return 'warning'
-    case 1:
+    case 'PROCESSING':
       return 'processing'
-    case 2:
+    case 'COMPLETED':
       return 'success'
-    case 3:
+    case 'REJECTED':
       return 'error'
     default:
       return 'default'
@@ -444,15 +408,19 @@ const getStatusColor = (status?: number) => {
 }
 
 // 获取状态文本
-const getStatusText = (status?: number) => {
+const getStatusText = (status?: string) => {
   switch (status) {
-    case 0:
+    case 'PENDING':
       return '待处理'
-    case 1:
+    case 'PROCESSING':
       return '处理中'
-    case 2:
+    case 'COMPLETED':
       return '已完成'
-    case 3:
+    case 'REJECTED':
+      return '已拒绝'
+    case 'APPROVED':
+      return '已同意'
+    case 'REJECTED':
       return '已拒绝'
     default:
       return '未知'
@@ -504,18 +472,40 @@ const handleReset = () => {
 }
 
 // 导出
-const handleExport = () => {
-  message.success('导出成功')
+const handleExport = async () => {
+  try {
+    const params: RefundOrderQuery = {
+      pageNum: 1,
+      pageSize: 9999,
+      refundNo: searchForm.refundNo,
+      orderNo: searchForm.orderNo,
+      status: searchForm.status,
+      type: searchForm.type,
+      startTime: searchForm.createTime?.[0]?.format('YYYY-MM-DD HH:mm:ss'),
+      endTime: searchForm.createTime?.[1]?.format('YYYY-MM-DD HH:mm:ss')
+    }
+    const res = await exportRefundOrders(params)
+    const blob = new Blob([res.data], { type: 'application/vnd.ms-excel' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `退款订单列表_${new Date().getTime()}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    message.success('导出成功')
+  } catch (error) {
+    message.error('导出失败')
+  }
 }
 
 // 查看详情
-const handleDetail = (record: AfterSaleInfo) => {
+const handleDetail = (record: RefundOrder) => {
   currentRecord.value = record
   detailVisible.value = true
 }
 
 // 审核
-const handleAudit = (record: AfterSaleInfo) => {
+const handleAudit = (record: RefundOrder) => {
   currentRecord.value = record
   auditForm.result = 1
   auditForm.note = ''
@@ -526,7 +516,12 @@ const handleAudit = (record: AfterSaleInfo) => {
 const handleAuditOk = () => {
   auditFormRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用审核API
+      if (!currentRecord.value) return
+      const params: RefundHandleParams = {
+        result: auditForm.result,
+        note: auditForm.note
+      }
+      await handleRefundApi(currentRecord.value.id, params)
       message.success('审核成功')
       auditVisible.value = false
       fetchData()
@@ -543,9 +538,9 @@ const handleAuditCancel = () => {
 }
 
 // 确认收货
-const handleReceive = async (record: AfterSaleInfo) => {
+const handleReceive = async (record: RefundOrder) => {
   try {
-    // TODO: 调用确认收货API
+    await confirmReceive(record.id)
     message.success('确认成功')
     fetchData()
   } catch (error) {
@@ -554,9 +549,9 @@ const handleReceive = async (record: AfterSaleInfo) => {
 }
 
 // 退款
-const handleRefund = (record: AfterSaleInfo) => {
+const handleRefund = (record: RefundOrder) => {
   currentRecord.value = record
-  refundForm.amount = record.amount
+  refundForm.amount = record.refundAmount
   refundForm.type = 1
   refundForm.note = ''
   refundVisible.value = true
@@ -566,7 +561,13 @@ const handleRefund = (record: AfterSaleInfo) => {
 const handleRefundOk = () => {
   refundFormRef.value?.validate().then(async () => {
     try {
-      // TODO: 调用退款API
+      if (!currentRecord.value) return
+      const params: RefundParams = {
+        amount: refundForm.amount,
+        type: refundForm.type,
+        note: refundForm.note
+      }
+      await processRefund(currentRecord.value.id, params)
       message.success('退款成功')
       refundVisible.value = false
       fetchData()
@@ -591,32 +592,20 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 
 // 获取表格数据
 const fetchData = async () => {
-  loading.value = true
-  try {
-    // TODO: 调用查询API
-    // 模拟数据
-    tableData.value = [
-      {
-        id: 1,
-        refundNo: 'TK202401010001',
-        orderNo: 'DD202401010001',
-        status: 0,
-        type: 1,
-        amount: 99.8,
-        reason: '商品质量问题',
-        description: '收到商品后发现有破损',
-        images: [
-          'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png'
-        ],
-        createTime: '2024-01-01 10:00:00'
-      }
-    ]
-    pagination.total = 1
-  } catch (error) {
-    message.error('获取数据失败')
-  } finally {
-    loading.value = false
-  }
+    const params: RefundOrderQuery = {
+      pageNum: pagination.current || 1,
+      pageSize: pagination.pageSize || 10,
+      refundNo: searchForm.refundNo,
+      orderNo: searchForm.orderNo,
+      status: searchForm.status,
+      type: searchForm.type,
+      startTime: searchForm.createTime?.[0]?.format('YYYY-MM-DD HH:mm:ss'),
+      endTime: searchForm.createTime?.[1]?.format('YYYY-MM-DD HH:mm:ss')
+    }
+    const res = await getRefundOrderList(params)
+    tableData.value = res.data.records
+    pagination.total = res.data.total
+      
 }
 
 // 初始化
