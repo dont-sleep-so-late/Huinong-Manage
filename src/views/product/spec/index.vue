@@ -110,6 +110,7 @@
       v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
+      width="700px"
       @cancel="handleModalCancel"
     >
       <a-form

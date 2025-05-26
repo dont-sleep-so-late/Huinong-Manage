@@ -145,7 +145,7 @@
     <a-modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="800px"
+      width="1000px"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
     >
@@ -207,45 +207,69 @@
           </div>
           <div class="upload-tip">最多上传9张详情图，每张大小不超过2MB</div>
         </a-form-item>
-        <a-form-item label="商品价格" name="price">
-          <a-input-number
-            v-model:value="formData.price"
-            :min="0"
-            :precision="2"
-            style="width: 100%"
-            placeholder="请输入商品价格"
-          />
-        </a-form-item>
-        <a-form-item label="商品库存" name="stock">
-          <a-input-number
-            v-model:value="formData.stock"
-            :min="0"
-            style="width: 100%"
-            placeholder="请输入商品库存"
-          />
-        </a-form-item>
-        <a-form-item label="产地" name="region">
-          <a-input
-            v-model:value="formData.region"
-            placeholder="请输入产地"
-            :maxlength="50"
-          />
-        </a-form-item>
-        <a-form-item label="计量单位" name="unit">
-          <a-input
-            v-model:value="formData.unit"
-            placeholder="请输入计量单位"
-          />
-        </a-form-item>
-        <a-form-item label="重量(kg)" name="weight">
-          <a-input-number
-            v-model:value="formData.weight"
-            :min="0"
-            :precision="2"
-            style="width: 100%"
-            placeholder="请输入商品重量"
-          />
-        </a-form-item>
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <a-form-item label="商品价格" name="price">
+              <a-input-number
+                v-model:value="formData.price"
+                :min="0"
+                :precision="2"
+                style="width: 100%"
+                placeholder="请输入商品价格"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="商品库存" name="stock">
+              <a-input-number
+                v-model:value="formData.stock"
+                :min="0"
+                style="width: 100%"
+                placeholder="请输入商品库存"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <a-form-item label="产地" name="region">
+              <a-input
+                v-model:value="formData.region"
+                placeholder="请输入产地"
+                :maxlength="50"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="计量单位" name="unit">
+              <a-input
+                v-model:value="formData.unit"
+                placeholder="请输入计量单位"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <a-form-item label="重量(kg)" name="weight">
+              <a-input-number
+                v-model:value="formData.weight"
+                :min="0"
+                :precision="2"
+                style="width: 100%"
+                placeholder="请输入商品重量"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="状态" name="status">
+              <a-radio-group v-model:value="formData.status">
+                <a-radio :value="1">上架</a-radio>
+                <a-radio :value="0">下架</a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="商品描述" name="description">
           <a-textarea
             v-model:value="formData.description"
@@ -253,12 +277,6 @@
             placeholder="请输入商品描述"
             :maxlength="500"
           />
-        </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-radio-group v-model:value="formData.status">
-            <a-radio :value="1">上架</a-radio>
-            <a-radio :value="0">下架</a-radio>
-          </a-radio-group>
         </a-form-item>
       </a-form>
     </a-modal>

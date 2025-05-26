@@ -70,7 +70,7 @@
       v-model:open="detailVisible"
       title="认证详情"
       :footer="null"
-      width="800px"
+      width="1100px"
     >
       <a-descriptions :column="2" bordered>
         <a-descriptions-item label="用户名">
@@ -427,21 +427,6 @@ onMounted(() => {
     margin-bottom: 16px;
   }
 
-  .id-card-images {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 24px;
-
-    .image-item {
-      text-align: center;
-
-      .image-title {
-        margin-bottom: 8px;
-        color: rgba(0, 0, 0, 0.85);
-        font-weight: 500;
-      }
-    }
-  }
 
   .business-license {
     margin-top: 24px;
@@ -454,4 +439,20 @@ onMounted(() => {
     }
   }
 }
+.id-card-images {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+
+    .image-item {
+      text-align: center;
+      
+      .image-title {
+        margin-bottom: 8px;
+        color: rgba(0, 0, 0, 0.85);
+        width: 200px; 
+        font-weight: 500;
+      }
+    }
+  }
 </style> 

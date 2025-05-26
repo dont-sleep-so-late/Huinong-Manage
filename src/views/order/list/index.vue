@@ -182,7 +182,7 @@
       >
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'productImage'">
-            <img :src="text" alt="商品图片" class="product-image" />
+            <img :src="text" alt="商品图片" style="width: 64px; height: 64px; object-fit: cover;" />
           </template>
           <template v-else-if="column.key === 'spec'">
             {{ record.specName }}: {{ record.specValue }}
