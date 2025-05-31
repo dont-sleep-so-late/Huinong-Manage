@@ -60,7 +60,7 @@ export function getUnreadMessageCount(type?: 1 | 2 | 3) {
  * @returns 标记成功的消息数量
  */
 export function markMessageAsRead(id: number) {
-  return request.put<number>(`/message/read/${id}`)
+  return request.put<number>(`/messages/read/${id}`)
 }
 
 /**

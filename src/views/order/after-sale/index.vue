@@ -30,7 +30,7 @@
             <a-select-option value="REJECTED">已拒绝</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="售后类型">
+        <!-- <a-form-item label="售后类型">
           <a-select
             v-model:value="searchForm.type"
             placeholder="请选择售后类型"
@@ -41,7 +41,7 @@
             <a-select-option :value="2">退货退款</a-select-option>
             <a-select-option :value="3">换货</a-select-option>
           </a-select>
-        </a-form-item>
+        </a-form-item> -->
         <a-form-item label="申请时间">
           <a-range-picker
             v-model:value="searchForm.createTime"

@@ -1,6 +1,6 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
+    <div class="login-box" :class="{ 'right-panel-active': activeForm === 'register' }">
       <!-- 登录表单 -->
       <div class="form-container sign-in-container" v-if="activeForm === 'login'">
         <div class="form-content">
@@ -278,6 +278,7 @@ import type { Rule } from 'ant-design-vue/es/form'
 import { sendCode, register } from '@/api/auth'
 import { usePermissionStore } from '@/store'
 import ForgotPasswordForm from '@/components/ForgotPasswordForm.vue'
+import CryptoJS from 'crypto-js'
 
 const router = useRouter()
 const route = useRoute()
@@ -519,7 +520,8 @@ const handleLogin = async () => {
     if (loginForm.loginType === 'sms') {
       loginParams.code = loginForm.code
     } else {
-      loginParams.password = loginForm.password
+      // 使用crypto-js进行MD5加密
+      loginParams.password = CryptoJS.MD5(loginForm.password).toString()
     }
 
     // 调用登录接口
@@ -542,7 +544,7 @@ const handleLogin = async () => {
 
     message.success('登录成功')
     const redirect = route.query.redirect as string
-    router.push(redirect || '/')
+    router.push(redirect || '/dashboard')
   } catch (error: any) {
     message.error(error.message || '登录失败')
   } finally {
@@ -617,7 +619,7 @@ const handleRegister = async () => {
     // 构建注册参数
     const registerParams = {
       username: registerForm.username,
-      password: registerForm.password,
+      password: CryptoJS.MD5(registerForm.password).toString(), // 使用crypto-js进行MD5加密
       code: registerForm.code,
       registerType: registerForm.registerType,
       ...(registerForm.registerType === 'phone' 

@@ -17,15 +17,15 @@
             style="width: 120px"
             allow-clear
           >
-            <a-select-option :value="0">待付款</a-select-option>
-            <a-select-option :value="1">待发货</a-select-option>
-            <a-select-option :value="2">已发货</a-select-option>
-            <a-select-option :value="3">已完成</a-select-option>
-            <a-select-option :value="4">已取消</a-select-option>
-            <a-select-option :value="5">已退款</a-select-option>
+            <a-select-option :value="OrderStatus.PENDING">待付款</a-select-option>
+            <a-select-option :value="OrderStatus.PAID">待发货</a-select-option>
+            <a-select-option :value="OrderStatus.SHIPPED">已发货</a-select-option>
+            <a-select-option :value="OrderStatus.COMPLETED">已完成</a-select-option>
+            <a-select-option :value="OrderStatus.CANCELLED">已取消</a-select-option>
+            <a-select-option :value="OrderStatus.REFUNDED">已退款</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="支付方式">
+        <!-- <a-form-item label="支付方式">
           <a-select
             v-model:value="searchForm.payType"
             placeholder="请选择支付方式"
@@ -35,7 +35,7 @@
             <a-select-option :value="1">微信支付</a-select-option>
             <a-select-option :value="2">支付宝</a-select-option>
           </a-select>
-        </a-form-item>
+        </a-form-item> -->
         <a-form-item label="下单时间">
           <a-range-picker
             v-model:value="searchForm.createTime"

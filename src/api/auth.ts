@@ -188,10 +188,9 @@ export function changePassword(params: ChangePasswordParams) {
  * @returns Promise<void>
  */
 export interface ResetPasswordParams {
-  account: string   // 账号（手机号或邮箱）
+  phone: string   // 账号（手机号或邮箱）
   code: string     // 验证码
-  password: string  // 新密码
-  confirmPassword: string  // 确认密码
+  newPassword: string  // 新密码
 }
 
 export function resetPassword(params: ResetPasswordParams) {

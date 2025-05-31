@@ -4,55 +4,35 @@
     <a-card class="search-card" :bordered="false">
       <a-form layout="inline" :model="searchForm">
         <a-form-item label="用户名">
-          <a-input
-            v-model:value="searchForm.username"
-            placeholder="请输入用户名"
-            allow-clear
-          />
+          <a-input v-model:value="searchForm.username" placeholder="请输入用户名" allow-clear />
         </a-form-item>
         <a-form-item label="手机号">
-          <a-input
-            v-model:value="searchForm.phone"
-            placeholder="请输入手机号"
-            allow-clear
-          />
+          <a-input v-model:value="searchForm.phone" placeholder="请输入手机号" allow-clear />
         </a-form-item>
         <a-form-item label="状态">
-          <a-select
-            v-model:value="searchForm.status"
-            placeholder="请选择状态"
-            style="width: 120px"
-            :options="statusOptions"
-            allow-clear
-            @change="handleStatusChange"
-          />
+          <a-select v-model:value="searchForm.status" placeholder="请选择状态" style="width: 120px" :options="statusOptions"
+            allow-clear @change="handleStatusChange" />
         </a-form-item>
         <a-form-item label="角色">
-          <a-select
-            v-model:value="searchForm.role"
-            placeholder="请选择角色"
-            style="width: 120px"
-            :options="roleOptions"
-            allow-clear
-            @change="handleRoleChange"
-          />
+          <a-select v-model:value="searchForm.role" placeholder="请选择角色" style="width: 120px" :options="roleOptions"
+            allow-clear @change="handleRoleChange" />
         </a-form-item>
         <a-form-item label="注册时间">
-          <a-range-picker
-            v-model:value="searchForm.createTimeRange"
-            :show-time="{ format: 'HH:mm:ss' }"
-            format="YYYY-MM-DD HH:mm:ss"
-            @change="handleDateRangeChange"
-          />
+          <a-range-picker v-model:value="searchForm.createTimeRange" :show-time="{ format: 'HH:mm:ss' }"
+            format="YYYY-MM-DD HH:mm:ss" @change="handleDateRangeChange" />
         </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="handleSearch">
-              <template #icon><SearchOutlined /></template>
+              <template #icon>
+                <SearchOutlined />
+              </template>
               查询
             </a-button>
             <a-button @click="handleReset">
-              <template #icon><RedoOutlined /></template>
+              <template #icon>
+                <RedoOutlined />
+              </template>
               重置
             </a-button>
           </a-space>
@@ -65,58 +45,52 @@
       <template #extra>
         <a-space>
           <a-button type="primary" @click="handleAdd">
-            <template #icon><PlusOutlined /></template>
+            <template #icon>
+              <PlusOutlined />
+            </template>
             新增
           </a-button>
           <a-button @click="handleExport">
-            <template #icon><ExportOutlined /></template>
+            <template #icon>
+              <ExportOutlined />
+            </template>
             导出
           </a-button>
         </a-space>
       </template>
 
-      <a-table
-        :columns="columns"
-        :data-source="tableData"
-        :loading="loading"
-        :pagination="pagination"
-        @change="handleTableChange"
-        row-key="id"
-      >
+      <a-table :columns="columns" :data-source="tableData" :loading="loading" :pagination="pagination"
+        @change="handleTableChange" row-key="id">
         <template #bodyCell="{ column, text, record }">
           <template v-if="column.key === 'avatar'">
             <a-avatar :src="text || ''" />
           </template>
-          
+
           <template v-else-if="column.key === 'role'">
-            <a-tag :color="text === 'super_admin' ? 'purple' : text === 'admin' ? 'blue' : text === 'seller' ? 'green' : 'default'">
+            <a-tag
+              :color="text === 'super_admin' ? 'purple' : text === 'admin' ? 'blue' : text === 'seller' ? 'green' : 'default'">
               {{ text === 'super_admin' ? '超级管理员' : text === 'admin' ? '管理员' : text === 'seller' ? '卖家' : '买家' }}
             </a-tag>
           </template>
-          
+
           <template v-else-if="column.key === 'status'">
             <a-tag :color="text === 1 ? 'success' : 'error'">
               {{ text === 1 ? '正常' : '禁用' }}
             </a-tag>
           </template>
-          
+
           <template v-else-if="column.key === 'action'">
             <a-space>
               <a @click="() => handleEdit(record)">编辑</a>
               <a-divider type="vertical" />
               <a @click="() => handlePassword(record)">重置密码</a>
               <a-divider type="vertical" />
-              <a-popconfirm
-                :title="record.status === 1 ? '确定要禁用该用户吗？' : '确定要启用该用户吗？'"
-                @confirm="() => handleToggleStatus(record)"
-              >
+              <a-popconfirm :title="record.status === 1 ? '确定要禁用该用户吗？' : '确定要启用该用户吗？'"
+                @confirm="() => handleToggleStatus(record)">
                 <a>{{ record.status === 1 ? '禁用' : '启用' }}</a>
               </a-popconfirm>
               <a-divider type="vertical" />
-              <a-popconfirm
-                title="确定要删除该用户吗？"
-                @confirm="() => handleDelete(record)"
-              >
+              <a-popconfirm title="确定要删除该用户吗？" @confirm="() => handleDelete(record)">
                 <a class="text-danger">删除</a>
               </a-popconfirm>
             </a-space>
@@ -126,69 +100,29 @@
     </a-card>
 
     <!-- 新增/编辑弹窗 -->
-    <a-modal
-      v-model:open="modalVisible"
-      :title="modalTitle"
-      @ok="handleModalOk"
-      @cancel="handleModalCancel"
-    >
-      <a-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        :label-col="{ span: 4 }"
-        :wrapper-col="{ span: 18 }"
-      >
+    <a-modal v-model:open="modalVisible" :title="modalTitle" @ok="handleModalOk" @cancel="handleModalCancel">
+      <a-form ref="formRef" :model="formData" :rules="formRules" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
         <a-form-item label="用户名" name="username">
-          <a-input
-            v-model:value="formData.username"
-            placeholder="请输入用户名"
-            :disabled="!!formData.id"
-          />
+          <a-input v-model:value="formData.username" placeholder="请输入用户名" :disabled="!!formData.id" />
         </a-form-item>
-        <a-form-item
-          v-if="!formData.id"
-          label="密码"
-          name="password"
-        >
-          <a-input-password
-            v-model:value="formData.password"
-            placeholder="请输入密码"
-          />
+        <a-form-item v-if="!formData.id" label="密码" name="password">
+          <a-input-password v-model:value="formData.password" placeholder="请输入密码" />
         </a-form-item>
         <a-form-item label="昵称" name="nickname">
-          <a-input
-            v-model:value="formData.nickname"
-            placeholder="请输入昵称"
-          />
+          <a-input v-model:value="formData.nickname" placeholder="请输入昵称" />
         </a-form-item>
         <a-form-item label="手机号" name="phone">
-          <a-input
-            v-model:value="formData.phone"
-            placeholder="请输入手机号"
-          />
+          <a-input v-model:value="formData.phone" placeholder="请输入手机号" />
         </a-form-item>
         <a-form-item label="邮箱" name="email">
-          <a-input
-            v-model:value="formData.email"
-            placeholder="请输入邮箱"
-          />
+          <a-input v-model:value="formData.email" placeholder="请输入邮箱" />
         </a-form-item>
         <a-form-item label="角色" name="role">
-          <a-select
-            v-model:value="formData.role"
-            placeholder="请选择角色"
-            :options="roleOptions"
-          />
+          <a-select v-model:value="formData.role" placeholder="请选择角色" :options="roleOptions" />
         </a-form-item>
         <a-form-item label="头像" name="avatar">
-          <image-upload
-            v-model:value="formData.avatar"
-            :max-size="2"
-            upload-text="上传头像"
-            alt="用户头像"
-            @change="handleAvatarChange"
-          />
+          <image-upload v-model:value="formData.avatar" :max-size="2" upload-text="上传头像" alt="用户头像"
+            @change="handleAvatarChange" />
         </a-form-item>
         <a-form-item v-if="formData.id" label="状态" name="status">
           <a-radio-group v-model:value="formData.status">
@@ -200,12 +134,7 @@
     </a-modal>
 
     <!-- 重置密码弹窗 -->
-    <a-modal
-      v-model:open="passwordVisible"
-      title="重置密码"
-      @ok="handlePasswordOk"
-      @cancel="handlePasswordCancel"
-    >
+    <a-modal v-model:open="passwordVisible" title="重置密码" @ok="handlePasswordOk" @cancel="handlePasswordCancel">
       <p>确定要重置该用户的密码吗？重置后的密码将会显示。</p>
     </a-modal>
   </div>
@@ -231,6 +160,10 @@ import {
   type CreateUserData,
   type UpdateUserData
 } from '@/api/user'
+import {
+  getAllRoles,
+} from '@/api/role'
+
 
 // 密码表单类型定义
 interface PasswordForm {
@@ -308,7 +241,6 @@ const statusOptions = [
 // 角色选项
 const roleOptions = [
   { label: '超级管理员', value: 'super_admin' },
-  { label: '管理员', value: 'admin' },
   { label: '卖家', value: 'seller' },
   { label: '买家', value: 'buyer' }
 ]
@@ -392,11 +324,13 @@ const formRules = {
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }
   ],
   email: [
-    { validator: async (_rule: any, value: string) => {
-      if (value && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
-        throw new Error('请输入正确的邮箱')
+    {
+      validator: async (_rule: any, value: string) => {
+        if (value && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+          throw new Error('请输入正确的邮箱')
+        }
       }
-    }}
+    }
   ],
   status: [
     { required: true, message: '请选择状态' }
@@ -510,9 +444,10 @@ const handleModalOk = () => {
           phone: formData.phone || undefined,
           email: formData.email || undefined,
           avatar: formData.avatar || undefined,
+          role: formData.role || undefined,
           status: formData.status
         }
-        await updateUser(updateData)
+        await updateUser(formData.id, updateData)
       } else {
         // 新增
         const createData: CreateUserData = {
@@ -545,8 +480,8 @@ const handleModalCancel = () => {
 const handlePasswordOk = async () => {
   try {
     if (!currentUserId.value) return
-    const res = await resetPassword(currentUserId.value)
-    message.success(`密码重置成功，新密码为：${res.newPassword}`)
+    await resetPassword(currentUserId.value)
+    message.success('密码重置成功，新密码为：123456')
     passwordVisible.value = false
   } catch (error) {
     message.error('重置密码失败')
@@ -570,7 +505,13 @@ const handleTableChange = (pag: TablePaginationConfig) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const {data} = await getUserList({
+    const { data: roleData } = await getAllRoles()
+    roleOptions.value = roleData.map((item) => ({
+      label: item.name,
+      value: item.code,
+      key: item.code
+    }))
+    const { data } = await getUserList({
       ...searchForm,
       pageNum: pagination.current,
       pageSize: pagination.pageSize
@@ -606,4 +547,4 @@ fetchData()
     color: #ff4d4f;
   }
 }
-</style> 
+</style>

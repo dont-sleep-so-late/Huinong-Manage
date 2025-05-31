@@ -1,4 +1,5 @@
 import axios from 'axios'
+import request from 'axios'
 
 const BASE_URL = 'https://ncpscxx.moa.gov.cn'
 
@@ -98,6 +99,49 @@ export function getNewestMarketData(varietyCode: string) {
           'Accept': 'application/json, text/javascript, */*; q=0.01',
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
+      }
+    )
+  }
+
+  // 获取品种大类
+  export function getVarietyMajorCategories() {
+    return request.post<any>(
+      'https://pfsc.agri.cn/api/priceQuotationController/getVarietyMajorCategories',
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: false,
+      }
+    )
+  }
+
+  // 根据大类pid获取子类
+  export function getVarietyNameByPid(pid: string) {
+    return request.post<any>(
+      `https://pfsc.agri.cn/api/priceQuotationController/getVarietyNameByPid?pid=${pid}`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: false,
+      }
+    )
+  }
+
+  // 获取单品种全国行情
+  export function getSingleVarietiesCountry(params: { name: string; cycle: string; order?: string }) {
+    const { name, cycle, order = 'ASC' } = params
+    return request.post<any>(
+      `https://pfsc.agri.cn/api/marketQuotationController/getSingleVarietiesCountry?name=${encodeURIComponent(name)}&cycle=${encodeURIComponent(cycle)}&order=${order}`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: false,
       }
     )
   }

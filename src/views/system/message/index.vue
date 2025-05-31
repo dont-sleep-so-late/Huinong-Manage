@@ -3,7 +3,7 @@
     <a-card class="message-card">
       <template #title>
         <div class="card-title">
-          <span>系统消息</span>
+          <span>消息</span>
           <div class="title-actions">
             <a-button type="primary" @click="handleReadAll" :loading="loading">
               全部标为已读
@@ -24,7 +24,12 @@
             >
               <div class="message-content">
                 <div class="message-header">
-                  <span class="message-title">{{ message.title }}</span>
+                  <div class="message-title-wrapper">
+                    <a-tag :color="getMessageTypeColor(message.type)" class="message-type-tag">
+                      {{ getMessageTypeText(message.type) }}
+                    </a-tag>
+                    <span class="message-title">{{ message.title }}</span>
+                  </div>
                   <span class="message-time">{{ formatTime(message.createdTime) }}</span>
                 </div>
                 <div class="message-body">{{ message.content }}</div>
@@ -136,6 +141,34 @@ const formatTime = (time: string) => {
   return dayjs(time).format('YYYY-MM-DD HH:mm:ss')
 }
 
+// 获取消息类型文本
+const getMessageTypeText = (type: number) => {
+  switch (type) {
+    case 1:
+      return '订单通知'
+    case 2:
+      return '商品审核'
+    case 3:
+      return '系统通知'
+    default:
+      return '未知类型'
+  }
+}
+
+// 获取消息类型对应的标签颜色
+const getMessageTypeColor = (type: number) => {
+  switch (type) {
+    case 1:
+      return 'orange'
+    case 2:
+      return 'green'
+    case 3:
+      return 'blue'
+    default:
+      return 'default'
+  }
+}
+
 onMounted(() => {
   fetchMessages()
 })
@@ -195,6 +228,16 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.message-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-type-tag {
+  margin-right: 4px;
 }
 
 .message-title {

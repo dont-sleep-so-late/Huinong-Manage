@@ -1,33 +1,21 @@
 <template>
   <a-layout-header class="layout-header">
-    <IconProvider
-      v-if="appStore.collapsed"
-      name="menu-unfold"
-      class="trigger"
-      @click="appStore.toggleCollapsed"
-    />
-    <IconProvider
-      v-else
-      name="menu-fold"
-      class="trigger"
-      @click="appStore.toggleCollapsed"
-    />
-    
+    <IconProvider v-if="appStore.collapsed" name="menu-unfold" class="trigger" @click="appStore.toggleCollapsed" />
+    <IconProvider v-else name="menu-fold" class="trigger" @click="appStore.toggleCollapsed" />
+
     <!-- 面包屑 -->
     <a-breadcrumb v-if="appStore.layout.showBreadcrumb" class="breadcrumb">
-      <a-breadcrumb-item 
-        v-for="(item, index) in breadcrumbs" 
-        :key="item.path"
-      >
-        <a class="breadcrumb-text" @click.prevent="handleBreadcrumbClick(breadcrumbs.slice(0, index + 1))">{{ item.meta?.title }}</a>
+      <a-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="item.path">
+        <a class="breadcrumb-text" @click.prevent="handleBreadcrumbClick(breadcrumbs.slice(0, index + 1))">{{
+          item.meta?.title }}</a>
       </a-breadcrumb-item>
     </a-breadcrumb>
 
     <div class="header-right">
       <!-- 消息通知 -->
       <MessageNotification />
-      
-      
+
+
       <!-- 全屏按钮 -->
       <a-button type="link" @click="toggleFullscreen">
         <IconProvider v-if="!isFullscreen" name="fullscreen" />
@@ -46,11 +34,11 @@
               <IconProvider name="user" />
               个人中心
             </a-menu-item>
-            <a-menu-item key="settings">
+            <!-- <a-menu-item key="settings">
               <IconProvider name="setting" />
               系统设置
             </a-menu-item>
-            <a-menu-divider />
+            <a-menu-divider /> -->
             <a-menu-item key="logout" @click="handleLogout">
               <IconProvider name="logout" />
               退出登录
@@ -152,13 +140,13 @@ const handleProfile = () => {
   .breadcrumb {
     margin-left: 16px;
     user-select: none;
-    
+
     :deep(.ant-breadcrumb-item) {
       .breadcrumb-text {
         color: rgba(0, 0, 0, 0.65);
         transition: color 0.3s;
         cursor: pointer;
-        
+
         &:hover {
           color: #1890ff;
         }
@@ -168,7 +156,7 @@ const handleProfile = () => {
         .breadcrumb-text {
           color: rgba(0, 0, 0, 0.85);
           cursor: default;
-          
+
           &:hover {
             color: rgba(0, 0, 0, 0.85);
           }
@@ -195,4 +183,4 @@ const handleProfile = () => {
     }
   }
 }
-</style> 
+</style>

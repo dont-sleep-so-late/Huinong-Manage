@@ -92,6 +92,7 @@ import { ref, reactive, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { MobileOutlined, SafetyOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { sendCode, resetPassword } from '@/api/auth'
+import CryptoJS from 'crypto-js'
 
 defineOptions({ name: 'ForgotPasswordForm' })
 
@@ -153,10 +154,9 @@ const handleSubmit = async (values: any) => {
   loading.value = true
   try {
     await resetPassword({
-      account: values.phone,
+      phone: values.phone,
       code: values.code,
-      password: values.newPassword,
-      confirmPassword: values.newPassword
+      newPassword: CryptoJS.MD5(values.newPassword).toString(),
     })
     message.success('密码重置成功')
     emit('backToLogin')

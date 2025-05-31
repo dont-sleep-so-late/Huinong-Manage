@@ -61,6 +61,7 @@ export interface UpdateUserData {
   phone?: string
   email?: string
   avatar?: string
+  role?: string
   status?: 0 | 1
 }
 
@@ -81,8 +82,8 @@ export const createUser = (data: CreateUserData) => {
 }
 
 // 更新用户
-export const updateUser = (data: UpdateUserData) => {
-  return request.put<ApiResponse<UserInfo>>(`/user/info`, data)
+export const updateUser = (id: number, data: UpdateUserData) => {
+  return request.put<ApiResponse<UserInfo>>(`/user/${id}/info`, data)
 }
 
 // 删除用户
